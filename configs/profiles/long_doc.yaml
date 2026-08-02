@@ -1,0 +1,27 @@
+name: long_doc
+corpus_path: data/long_doc/corpus.jsonl
+evalset_path: data/long_doc/evalset.jsonl
+embedding_model: "BAAI/bge-large-en-v1.5"
+# Long-document analysis is semantic -> dense; larger k to gather multiple chunks.
+retrieval_mode: dense
+k: 12
+rerank: true
+rerank_top_n: 8
+accuracy_scorer: judge
+active_metrics: [hit_rate_at_k, context_recall, ndcg_at_k, accuracy, completeness, faithfulness, cost_usd]
+metric_weights:
+  completeness: 0.30      # did it synthesise across chunks?
+  accuracy: 0.25
+  faithfulness: 0.20
+  context_recall: 0.15
+  cost_usd: -0.10
+tuning_budget: 20
+knobs:
+  retrieval_modes: [dense, hybrid]
+  k_values: [8, 12, 16]
+  rerank_options: [true]
+  rerank_top_n: [6, 8]
+  system_prompts:
+    - "You are a document-analysis assistant. Synthesise a complete answer using ALL relevant passages provided. Cite each as [id]."
+  few_shot_sets:
+    - []

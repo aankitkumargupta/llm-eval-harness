@@ -1,0 +1,27 @@
+name: tech_support
+corpus_path: data/tech_support/corpus.jsonl
+evalset_path: data/tech_support/evalset.jsonl
+embedding_model: "BAAI/bge-large-en-v1.5"
+# Technical support is lexical-heavy (error codes, exact commands) -> sparse/hybrid.
+retrieval_mode: hybrid
+k: 8
+rerank: false
+rerank_top_n: 5
+accuracy_scorer: contains   # exact error-string / command reproduction
+active_metrics: [hit_rate_at_k, mrr, ndcg_at_k, accuracy, answer_relevance, cost_usd]
+metric_weights:
+  accuracy: 0.35
+  answer_relevance: 0.20
+  mrr: 0.15
+  hit_rate_at_k: 0.15
+  cost_usd: -0.15   # high-volume: cost matters
+tuning_budget: 20
+knobs:
+  retrieval_modes: [sparse, hybrid]
+  k_values: [5, 8, 12]
+  rerank_options: [false, true]
+  rerank_top_n: [5]
+  system_prompts:
+    - "You are a technical support agent. Answer using the provided context. Reproduce exact commands and error codes verbatim. Cite passages as [id]."
+  few_shot_sets:
+    - []

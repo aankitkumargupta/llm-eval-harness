@@ -1,0 +1,5 @@
+{"item_id": "rq1", "query": "What is the maximum fine for a first offense of unauthorized disclosure under Section 12?", "item_type": "answerable", "gold_answer": "A fine of up to 5000 dollars.", "gold_passage_ids": ["act12#0"]}
+{"item_id": "rq2", "query": "Within how many hours must a data controller notify individuals of a breach?", "item_type": "answerable", "gold_answer": "Within 72 hours.", "gold_passage_ids": ["act13#0"]}
+{"item_id": "rq3", "query": "Who counts as a data controller under the Act?", "item_type": "answerable", "gold_answer": "Any entity that determines the purposes and means of processing personal data.", "gold_passage_ids": ["act20#0"]}
+{"item_id": "rq4", "query": "How long do controllers have to comply with a deletion request?", "item_type": "answerable", "gold_answer": "Within 30 days.", "gold_passage_ids": ["act31#0"]}
+{"item_id": "rq5", "query": "What is the penalty under Section 45 for exporting data to a foreign jurisdiction?", "item_type": "unanswerable", "gold_answer": null, "gold_passage_ids": []}

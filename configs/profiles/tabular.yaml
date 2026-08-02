@@ -1,0 +1,27 @@
+name: tabular
+corpus_path: data/tabular/corpus.jsonl
+evalset_path: data/tabular/evalset.jsonl
+embedding_model: "BAAI/bge-large-en-v1.5"
+retrieval_mode: hybrid
+k: 8
+rerank: false
+rerank_top_n: 5
+# CRITICAL: exact numeric match. Semantic similarity is WRONG here
+# ("1,000" vs "10,000" are close in embedding space, catastrophic as facts).
+accuracy_scorer: numeric
+active_metrics: [hit_rate_at_k, mrr, accuracy, cost_usd]
+metric_weights:
+  accuracy: 0.55          # numeric correctness dominates
+  hit_rate_at_k: 0.20
+  mrr: 0.15
+  cost_usd: -0.10
+tuning_budget: 20
+knobs:
+  retrieval_modes: [dense, sparse, hybrid]
+  k_values: [5, 8]
+  rerank_options: [false, true]
+  rerank_top_n: [5]
+  system_prompts:
+    - "You answer questions about tabular data. Return the exact number with units. Use only the provided context. Cite as [id]."
+  few_shot_sets:
+    - []

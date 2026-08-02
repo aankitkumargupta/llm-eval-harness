@@ -1,0 +1,26 @@
+name: high_vol_chat
+corpus_path: data/high_vol_chat/corpus.jsonl
+evalset_path: data/high_vol_chat/evalset.jsonl
+embedding_model: "togethercomputer/m2-bert-80M-8k-retrieval"  # cheaper embedder
+# High-vol chat is semantic and cost/latency-sensitive -> dense, small k.
+retrieval_mode: dense
+k: 5
+rerank: false
+rerank_top_n: 3
+accuracy_scorer: judge
+active_metrics: [hit_rate_at_k, accuracy, answer_relevance, cost_usd]
+metric_weights:
+  answer_relevance: 0.35
+  accuracy: 0.25
+  cost_usd: -0.25         # cost dominates at high volume
+  hit_rate_at_k: 0.15
+tuning_budget: 15
+knobs:
+  retrieval_modes: [dense]
+  k_values: [3, 5]
+  rerank_options: [false]
+  rerank_top_n: [3]
+  system_prompts:
+    - "You are a concise, friendly chat assistant. Answer briefly using the provided context. Cite as [id] when relevant."
+  few_shot_sets:
+    - []

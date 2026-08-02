@@ -1,0 +1,29 @@
+# The run matrix: what the orchestrator executes.
+profiles:
+  - configs/profiles/regulated_qa.yaml
+  - configs/profiles/tech_support.yaml
+  - configs/profiles/long_doc.yaml
+  - configs/profiles/tabular.yaml
+  - configs/profiles/high_vol_chat.yaml
+
+passes:
+  baseline: true    # fixed prompt + fixed retrieval
+  adapted: true     # equal-budget tuning search -> best config on test
+  latency: true     # clean p50/p95 in the low-concurrency lane
+
+# Fraction of each evalset held out as the DEV split for the tuning search.
+# The remainder is the TEST split (baseline + adapted both run on test).
+dev_split: 0.3
+split_seed: 0
+
+# Throughput-lane concurrency (accuracy/cost/judge). Keep modest to respect
+# Together rate limits.
+max_workers: 8
+
+# How many items to use for the latency lane (a small subset is plenty).
+latency_items: 20
+
+# Local services
+qdrant_url: "http://localhost:6333"
+cache_dir: ".cache"
+store_path: "runs/traces.parquet"

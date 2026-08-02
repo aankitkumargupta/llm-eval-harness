@@ -1,0 +1,15 @@
+# The models under test — the variable in every experiment.
+# Every string here must have a matching entry in pricing.yaml.
+# Pick a spread across the cost/accuracy/latency frontier: small dense, mid,
+# large dense, and an MoE.
+models:
+  - "openai/gpt-oss-20b"
+  - "openai/gpt-oss-120b"
+  - "Qwen/Qwen3.5-9B"
+  - "Qwen/Qwen2.5-7B-Instruct-Turbo"
+
+# The judge is fixed. It must NOT share a family with any model under test on the
+# items it grades (the code enforces this). 
+judge_model: "meta-llama/Llama-3.3-70B-Instruct-Turbo"
+# Reranker (used only when a profile / candidate enables reranking).
+rerank_model: ""

@@ -1,0 +1,54 @@
+name: regulated_qa
+corpus_path: data/regulated_qa/corpus.jsonl
+evalset_path: data/regulated_qa/evalset.jsonl
+
+# Fixed embedder — part of the apparatus, identical across all models under test.
+embedding_model: "BAAI/bge-large-en-v1.5"
+
+# Baseline (fixed) retrieval. Regulated QA is lexical-heavy (exact statute
+# citations), so hybrid is a sensible fixed baseline.
+retrieval_mode: hybrid
+k: 8
+rerank: false
+rerank_top_n: 5
+
+# Judge-scored accuracy; regulated answers rarely match a gold string exactly.
+accuracy_scorer: judge
+
+# Metrics active for this profile. Abstention + citations matter most here: a
+# confident-but-wrong statute is worse than a refusal.
+active_metrics:
+  - hit_rate_at_k
+  - mrr
+  - context_recall
+  - accuracy
+  - faithfulness
+  - citation_valid_pointer
+  - citation_supporting
+  - abstention
+  - cost_usd
+
+# Weights for this profile's composite leaderboard number.
+# Cost is 'lower is better', so its weight is NEGATIVE.
+metric_weights:
+  faithfulness: 0.30
+  citation_supporting: 0.20
+  abstention_correct: 0.20
+  accuracy: 0.20
+  hit_rate_at_k: 0.10
+  cost_usd: -0.02
+
+# Equal tuning budget: 20 candidate configs, identical for every model.
+tuning_budget: 20
+
+# What the ADAPTED pass may change (the tuning search space).
+knobs:
+  retrieval_modes: [dense, sparse, hybrid]
+  k_values: [5, 8, 12]
+  rerank_options: [false, true]
+  rerank_top_n: [5]
+  system_prompts:
+    - "You are a compliance assistant. Answer ONLY from the provided context and cite every claim by its passage id in square brackets. If the answer is not in the context, reply that you don't know."
+    - "You are a careful legal-domain assistant. Use only the given passages, cite them as [id], and refuse to answer if the passages do not contain the answer."
+  few_shot_sets:
+    - []
