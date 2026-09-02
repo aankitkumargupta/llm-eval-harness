@@ -1,26 +1,32 @@
 # Provider layer
-openai>=1.40.0          # OpenAI-compatible client pointed at Together
-requests>=2.31.0        # Together rerank endpoint (raw HTTP)
+openai>=1.40.0          # the OpenAI-compatible client: Together, OpenAI, Groq,
+                        # Fireworks, DeepInfra, OpenRouter, vLLM, Ollama, LM Studio
+requests>=2.31.0        # rerank endpoints (not part of the OpenAI surface)
 
 # RAG
 qdrant-client>=1.12.0   # vector store with native BM25 sparse vectors
 
 # Store + reporting
 pandas>=2.0.0
-duckdb>=1.0.0
-pyarrow>=14.0.0         # Parquet engine for pandas
+duckdb>=1.0.0           # analytical SQL over the Parquet trace store
+pyarrow>=14.0.0         # Parquet engine
 numpy>=1.24.0
-scipy>=1.10.0           # (available for future statistical extensions)
+scipy>=1.10.0
 
 # Config
 pyyaml>=6.0
-python-dotenv>=1.0.0    # optional .env support for the API key
+python-dotenv>=1.0.0    # optional .env support for API keys
 
-# Dashboard (optional — only needed for `streamlit run dashboard.py`)
+# --- optional -------------------------------------------------------------
+# Anthropic is NOT OpenAI-shaped and needs its own SDK. Only required if a
+# model string uses the `anthropic:` provider prefix.
+anthropic>=0.40.0
+
+# UI (streamlit run app.py / dashboard.py)
 streamlit>=1.40.0
-altair>=5.0.0           # ships with streamlit; used for the Pareto/CI charts
+altair>=5.5.0        # alt.theme.register, used by harness/ui
 
-# Dataset prep (optional — only for prepare_dataset.py)
+# Dataset prep (prepare_dataset.py) and BM25/hybrid retrieval
 pdfplumber>=0.11.0
 openpyxl>=3.1.0         # read .xlsx Q&A files
-fastembed>=0.4.0
+fastembed>=0.4.0        # BM25 sparse vectors for hybrid retrieval

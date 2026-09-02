@@ -1,0 +1,65 @@
+name: support_triage
+description: >
+  Non-RAG classification: route an inbound support ticket to a queue. Included
+  because most LLM evaluation is not retrieval-augmented, and the same
+  apparatus - matrix walk, cost metering, caching, significance testing,
+  regression gating - answers "which model should classify our tickets?" just
+  as well as it answers a RAG question.
+
+# `direct` and `classify` skip retrieval entirely: no corpus, no embedder, no
+# vector store, nothing to ingest. The evalset's `query` is the input text and
+# `gold_answer` is the correct label.
+task: classify
+
+evalset_path: data/support_triage/evalset.jsonl
+corpus_path: ""
+embedding_model: ""
+
+# The model must answer with exactly one of these. The label parser tolerates
+# decoration ("Label: billing", "**billing**") and prefers the longest match,
+# so `not_urgent` wins over `urgent` when both appear as substrings.
+label_set:
+  - billing
+  - technical
+  - account_access
+  - feature_request
+  - complaint
+  - spam
+
+accuracy_scorer: exact   # ignored for classify; the label parser scores it
+max_tokens: 32           # a label is a few tokens; a large budget invites prose
+temperature: 0.0
+
+active_metrics:
+  - accuracy
+  - cost_usd
+  - latency_ms
+
+# Classification is high-volume and latency-sensitive, so cost dominates far
+# more than it does in a considered QA workload.
+metric_weights:
+  accuracy: 0.70
+  cost_usd: -0.20
+  latency_ms: -0.10
+
+# Report `macro_f1` alongside accuracy from the trace store: on the imbalanced
+# label distributions real ticket queues have, a model that never predicts the
+# rare-but-critical class can still post high accuracy.
+
+tuning_budget: 8
+knobs:
+  # Retrieval knobs are inert for a non-RAG task; only the prompt varies, which
+  # is exactly what few-shot selection for a classifier should be tuning.
+  retrieval_modes: [dense]
+  k_values: [1]
+  rerank_options: [false]
+  rerank_top_n: [1]
+  system_prompts:
+    - "You are a support ticket classifier. Respond with exactly one label and nothing else."
+    - "Classify the support ticket into exactly one category. Output only the category name, lowercase, with no punctuation or explanation."
+  few_shot_sets:
+    - []
+    - - {role: user, content: "My card was declined three times but I still got charged twice."}
+      - {role: assistant, content: "billing"}
+      - {role: user, content: "The export button throws a 500 error on Firefox."}
+      - {role: assistant, content: "technical"}

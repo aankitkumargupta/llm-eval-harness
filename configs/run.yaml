@@ -5,11 +5,12 @@ profiles:
   - configs/profiles/long_doc.yaml
   - configs/profiles/tabular.yaml
   - configs/profiles/high_vol_chat.yaml
+  - configs/profiles/support_triage.yaml
 
 passes:
   baseline: true    # fixed prompt + fixed retrieval
-  adapted: true     # equal-budget tuning search -> best config on test
-  latency: true     # clean p50/p95 in the low-concurrency lane
+  adapted: false    # equal-budget tuning search -> best config on test
+  latency: true     # clean p50/p95/TTFT in the low-concurrency lane
 
 # Fraction of each evalset held out as the DEV split for the tuning search.
 # The remainder is the TEST split (baseline + adapted both run on test).
@@ -17,13 +18,61 @@ dev_split: 0.3
 split_seed: 0
 
 # Throughput-lane concurrency (accuracy/cost/judge). Keep modest to respect
-# Together rate limits.
+# provider rate limits; the retry layer rides out the occasional 429, but
+# sustained limiting just slows the run down. Prefer setting a `rate_limit`
+# per provider in models.yaml over raising this.
 max_workers: 8
 
-# How many items to use for the latency lane (a small subset is plenty).
+# How many items to use for the latency lane. A small subset gives stable
+# percentiles, and each one is a real uncached network call.
 latency_items: 20
 
-# Local services
+# ---------------------------------------------------------------------------
+# Spend control
+# ---------------------------------------------------------------------------
+# Hard USD ceiling for one run. The run aborts cleanly the moment measured
+# spend crosses it; rows written so far are kept and the run can be resumed.
+# 0 disables the ceiling.
+#
+# Worth setting: a mis-typed tuning_budget is otherwise unbounded, and the
+# judge is billed per item on top of every model call.
+budget_usd: 0.0
+
+# ---------------------------------------------------------------------------
+# Reliability
+# ---------------------------------------------------------------------------
+# Transient failures (429 / 5xx / timeouts) are retried with jittered
+# exponential backoff. Permanent ones (400 / 404 / auth) fail immediately -
+# retrying a bad model string wastes minutes and hides the mistake.
+max_retries: 5
+retry_backoff: 1.0
+retry_max_backoff: 30.0
+
+# Rows are flushed to the store every N items, so a crash costs at most this
+# many paid API calls rather than the whole run.
+checkpoint_every: 50
+
+# ---------------------------------------------------------------------------
+# Local services and paths
+# ---------------------------------------------------------------------------
+# Qdrant runs one of two ways:
+#
+#   EMBEDDED  - set `qdrant_path` to a local folder. No Docker, no server, no
+#               ports. This is the normal choice for a single-user local run,
+#               and it is what the Streamlit app always uses.
+#   SERVER    - leave `qdrant_path` empty and point `qdrant_url` at a running
+#               instance (docker run -p 6333:6333 qdrant/qdrant). Use this for
+#               a large corpus or when several people share one index.
+#
+# `qdrant_path` wins when both are set. Uncomment the line below to run fully
+# locally without remembering `--qdrant-path` on every command.
+# qdrant_path: "workspace/qdrant"
 qdrant_url: "http://localhost:6333"
+
 cache_dir: ".cache"
-store_path: "runs/traces.parquet"
+pricing_path: "configs/pricing.yaml"
+
+# A DIRECTORY, not a file: the store appends one Parquet part per checkpoint
+# instead of rewriting the whole dataset (which was O(n^2) and lost everything
+# on a crash mid-write). An existing single-file traces.parquet is still read.
+store_path: "runs/traces"

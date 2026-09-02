@@ -14,16 +14,19 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from harness.eval import metrics as M
-from harness.rag.retrieve import reciprocal_rank_fusion
 from harness.cache.cache import Cache, stable_hash
-from harness.store.schema import TraceRow, Pass, ItemType, RetrievalMode
-from harness.store.store import TraceStore
-from harness.report.aggregate import (
-    weighted_composite, tuning_gain, pareto_frontier, elo_from_pairwise,
-    bootstrap_ci,
-)
+from harness.eval import metrics as M
 from harness.profiles.profile import Profile
+from harness.rag.retrieve import reciprocal_rank_fusion
+from harness.report.aggregate import (
+    bootstrap_ci,
+    elo_from_pairwise,
+    pareto_frontier,
+    tuning_gain,
+    weighted_composite,
+)
+from harness.store.schema import ItemType, Pass, RetrievalMode, TraceRow
+from harness.store.store import TraceStore
 from harness.tuning.search import enumerate_candidates
 
 

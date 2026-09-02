@@ -1,19 +1,69 @@
-# Dated pricing registry — the input to the cost metric.
-# Prices are per 1,000,000 tokens (USD). REFRESH these from Together's live
-# pricing page before any real benchmark run — the cost metric is only as
-# accurate as this file.
+# Dated pricing registry - the input to the cost metric.
+#
+# Prices are per 1,000,000 tokens (USD). REFRESH these from each vendor's live
+# pricing page before any real benchmark run: the cost metric is only as
+# accurate as this file, and cost carries a NEGATIVE weight in the leaderboard
+# composite, so a stale or missing price does not merely mis-state dollars - it
+# mis-ranks models.
+#
+# An unpriced model raises rather than costing zero. `main.py validate` lists
+# anything missing before you spend money.
+#
+# Lookup is exact-match first, then longest-prefix, so one entry can cover a
+# family (e.g. "claude-opus-5" also matches a dated snapshot of itself).
 as_of: "2026-08-02"
 
 models:
+  # --- Together ------------------------------------------------------------
   "openai/gpt-oss-20b":                       {input: 0.05, output: 0.20}
   "openai/gpt-oss-120b":                      {input: 0.15, output: 0.60}
   "Qwen/Qwen3.5-9B":                          {input: 0.30, output: 0.30}
   "Qwen/Qwen2.5-7B-Instruct-Turbo":           {input: 0.30, output: 0.30}
   "meta-llama/Llama-3.3-70B-Instruct-Turbo":  {input: 0.88, output: 0.88}
 
+  # --- Anthropic (first-party API list prices) -----------------------------
+  # Bedrock / Vertex are partner-operated and priced separately; if you route
+  # through them, replace these with the partner's rates.
+  "claude-fable-5":                           {input: 10.00, output: 50.00}
+  "claude-opus-5":                            {input: 5.00,  output: 25.00}
+  "claude-opus-4-8":                          {input: 5.00,  output: 25.00}
+  "claude-sonnet-5":                          {input: 2.00,  output: 10.00}
+  "claude-sonnet-4-6":                        {input: 3.00,  output: 15.00}
+  "claude-haiku-4-5":                         {input: 1.00,  output: 5.00}
+
+  # --- OpenRouter ----------------------------------------------------------
+  # Provider-qualified keys, because the SAME model costs a different amount
+  # through a router than direct: these win over the bare names above.
+  # OpenRouter's listed rates are ceilings - caching and provider routing mean
+  # the price actually paid is often lower, so cost here reads pessimistic.
+  "openrouter:openai/gpt-5.2":                    {input: 1.75,  output: 14.00}
+  "openrouter:anthropic/claude-sonnet-4.6":       {input: 3.00,  output: 15.00}
+  "openrouter:meta-llama/llama-3.3-70b-instruct": {input: 0.10,  output: 0.32}
+
+  # --- Self-hosted ---------------------------------------------------------
+  # Marginal token cost is zero; your real cost is GPU-hours, which no
+  # per-token figure captures. Left at zero deliberately, so a self-hosted
+  # model's *quality* is comparable while its cost column is honestly blank
+  # rather than fabricated. Substitute your amortised $/1M if you have it.
+  # "ollama:llama3.1:8b":                     {input: 0.0, output: 0.0}
+
 embeddings:
-  "intfloat/multilingual-e5-large-instruct": {input: 0.02}
-  "BAAI/bge-large-en-v1.5":       {input: 0.02}
+  # --- Together ------------------------------------------------------------
+  "intfloat/multilingual-e5-large-instruct":   {input: 0.02}
+  "BAAI/bge-large-en-v1.5":                    {input: 0.02}
   "togethercomputer/m2-bert-80M-8k-retrieval": {input: 0.008}
 
+  # --- OpenRouter ----------------------------------------------------------
+  # Note the casing: Together uses "BAAI/bge-...", OpenRouter uses "baai/...".
+  # They are different namespaces, not the same key spelled two ways.
+  "baai/bge-m3":                      {input: 0.01}   # 1024-dim, 8K context
+  "openai/text-embedding-3-small":    {input: 0.02}   # 1536-dim
+  "openai/text-embedding-3-large":    {input: 0.13}   # 3072-dim
+  "qwen/qwen3-embedding-8b":          {input: 0.01}
+  "perplexity/pplx-embed-v1-0.6b":    {input: 0.004}  # cheapest on OpenRouter
+
+# Rerank endpoints bill per query, per document, or per token - all three are
+# supported. Populate this if you enable a reranker, or its cost is omitted
+# from the end-to-end figure.
 rerank: {}
+  # "Salesforce/Llama-Rank-v1": {per_query: 0.0000, input: 0.10}

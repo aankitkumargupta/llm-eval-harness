@@ -241,10 +241,10 @@ def main():
                   args.chunk_size, args.overlap)
 
     print("\nDone. Next:")
-    print(f"  1) Set accuracy_scorer to 'exact' or 'numeric' in the profile config")
+    print("  1) Set accuracy_scorer to 'exact' or 'numeric' in the profile config")
     print(f"  2) python main.py ingest --profile <your_profile>.yaml "
           f"--chunk-size {args.chunk_size} --overlap {args.overlap}")
-    print(f"  3) python main.py run    --profile <your_profile>.yaml")
+    print("  3) python main.py run    --profile <your_profile>.yaml")
 
 
 if __name__ == "__main__":

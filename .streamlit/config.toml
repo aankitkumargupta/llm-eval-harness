@@ -1,0 +1,20 @@
+# Streamlit theme, matched to harness/ui/theme.py so the page chrome and the
+# charts share one palette. Without this the furniture and the plots drift apart.
+#
+# `base = "dark"` selects the MIDNIGHT palette in harness/ui/theme.py - the
+# navy dashboard look. Switch to the light values below for the light palette;
+# the charts follow automatically, because the theme is read at render time.
+[theme]
+base = "dark"
+primaryColor = "#3987e5"              # light: "#2a78d6"
+backgroundColor = "#0b1020"           # light: "#f9f9f7"
+secondaryBackgroundColor = "#141b2d"  # light: "#ffffff"
+textColor = "#e8ecf5"                 # light: "#0b0b0b"
+font = "sans serif"
+
+[server]
+headless = true
+fileWatcherType = "auto"
+
+[browser]
+gatherUsageStats = false

@@ -1,0 +1,41 @@
+{"item_id": "billing_0", "query": "I was charged twice for the same invoice this month.", "item_type": "answerable", "gold_answer": "billing"}
+{"item_id": "billing_1", "query": "My card was declined but the payment still shows as pending.", "item_type": "answerable", "gold_answer": "billing"}
+{"item_id": "billing_2", "query": "Can I get a refund for the annual plan I cancelled last week?", "item_type": "answerable", "gold_answer": "billing"}
+{"item_id": "billing_3", "query": "Why did my subscription price go up without notice?", "item_type": "answerable", "gold_answer": "billing"}
+{"item_id": "billing_4", "query": "The invoice PDF shows the wrong VAT number for our company.", "item_type": "answerable", "gold_answer": "billing"}
+{"item_id": "billing_5", "query": "We need to switch from monthly to annual billing.", "item_type": "answerable", "gold_answer": "billing"}
+{"item_id": "billing_6", "query": "There is a duplicate charge of 49.00 on the 3rd.", "item_type": "answerable", "gold_answer": "billing"}
+{"item_id": "billing_7", "query": "Please send a receipt for order 88213.", "item_type": "answerable", "gold_answer": "billing"}
+{"item_id": "technical_0", "query": "The export button throws a 500 error on Firefox.", "item_type": "answerable", "gold_answer": "technical"}
+{"item_id": "technical_1", "query": "API calls to /v2/search time out after about 30 seconds.", "item_type": "answerable", "gold_answer": "technical"}
+{"item_id": "technical_2", "query": "The dashboard renders blank after the latest update.", "item_type": "answerable", "gold_answer": "technical"}
+{"item_id": "technical_3", "query": "Webhook deliveries stopped arriving since Tuesday.", "item_type": "answerable", "gold_answer": "technical"}
+{"item_id": "technical_4", "query": "File uploads over 10 MB fail with no error message.", "item_type": "answerable", "gold_answer": "technical"}
+{"item_id": "technical_5", "query": "The mobile app crashes on launch on Android 14.", "item_type": "answerable", "gold_answer": "technical"}
+{"item_id": "technical_6", "query": "Search results are missing records that definitely exist.", "item_type": "answerable", "gold_answer": "technical"}
+{"item_id": "technical_7", "query": "SSO redirect loops back to the login page forever.", "item_type": "answerable", "gold_answer": "technical"}
+{"item_id": "account_access_0", "query": "I cannot log in, the reset email never arrives.", "item_type": "answerable", "gold_answer": "account_access"}
+{"item_id": "account_access_1", "query": "My account is locked after too many attempts.", "item_type": "answerable", "gold_answer": "account_access"}
+{"item_id": "account_access_2", "query": "Need to transfer ownership to a different admin.", "item_type": "answerable", "gold_answer": "account_access"}
+{"item_id": "account_access_3", "query": "Two-factor codes are rejected even though the clock is right.", "item_type": "answerable", "gold_answer": "account_access"}
+{"item_id": "account_access_4", "query": "Please remove a former employee from our workspace.", "item_type": "answerable", "gold_answer": "account_access"}
+{"item_id": "account_access_5", "query": "I lost my recovery codes and cannot sign in.", "item_type": "answerable", "gold_answer": "account_access"}
+{"item_id": "account_access_6", "query": "How do I add a second admin to the organisation?", "item_type": "answerable", "gold_answer": "account_access"}
+{"item_id": "feature_request_0", "query": "Please add dark mode to the web console.", "item_type": "answerable", "gold_answer": "feature_request"}
+{"item_id": "feature_request_1", "query": "It would help if we could bulk-export to CSV.", "item_type": "answerable", "gold_answer": "feature_request"}
+{"item_id": "feature_request_2", "query": "Any plans to support SAML in addition to OIDC?", "item_type": "answerable", "gold_answer": "feature_request"}
+{"item_id": "feature_request_3", "query": "We would like scheduled reports sent weekly by email.", "item_type": "answerable", "gold_answer": "feature_request"}
+{"item_id": "feature_request_4", "query": "Can you add a Slack integration for alerts?", "item_type": "answerable", "gold_answer": "feature_request"}
+{"item_id": "feature_request_5", "query": "Please support custom fields on the contact record.", "item_type": "answerable", "gold_answer": "feature_request"}
+{"item_id": "feature_request_6", "query": "An audit log filter by user would save us hours.", "item_type": "answerable", "gold_answer": "feature_request"}
+{"item_id": "complaint_0", "query": "This is the third week without a reply from support.", "item_type": "answerable", "gold_answer": "complaint"}
+{"item_id": "complaint_1", "query": "The service has been down twice this month, unacceptable.", "item_type": "answerable", "gold_answer": "complaint"}
+{"item_id": "complaint_2", "query": "Your team promised a fix in March and nothing happened.", "item_type": "answerable", "gold_answer": "complaint"}
+{"item_id": "complaint_3", "query": "I have been transferred four times and nobody helps.", "item_type": "answerable", "gold_answer": "complaint"}
+{"item_id": "complaint_4", "query": "Very disappointed with how the migration was handled.", "item_type": "answerable", "gold_answer": "complaint"}
+{"item_id": "complaint_5", "query": "The quality of support has clearly declined this year.", "item_type": "answerable", "gold_answer": "complaint"}
+{"item_id": "spam_0", "query": "Congratulations, you have won a free cruise, click here!", "item_type": "answerable", "gold_answer": "spam"}
+{"item_id": "spam_1", "query": "BUY CHEAP FOLLOWERS NOW at bestdeals dot example", "item_type": "answerable", "gold_answer": "spam"}
+{"item_id": "spam_2", "query": "Increase your revenue 10x with our SEO service, reply YES.", "item_type": "answerable", "gold_answer": "spam"}
+{"item_id": "spam_3", "query": "Hello dear, I have a business proposal worth $4,500,000.", "item_type": "answerable", "gold_answer": "spam"}
+{"item_id": "spam_4", "query": "Limited time offer!!! Crypto doubling, act fast.", "item_type": "answerable", "gold_answer": "spam"}

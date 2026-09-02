@@ -16,20 +16,17 @@ separate lexical engine.
 from __future__ import annotations
 
 import uuid
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Iterator
+from collections.abc import Iterator
+from typing import TYPE_CHECKING
 
-from qdrant_client import QdrantClient, models
+from .documents import Document
 
-from ..clients.together_client import TogetherClient
+if TYPE_CHECKING:  # annotations only - importing these SDKs costs ~20s
+    from qdrant_client import QdrantClient
 
+    from ..clients.base import Embedder
 
-@dataclass
-class Document:
-    doc_id: str
-    text: str
-    source_uri: str = ""
+__all__ = ["Document", "Ingestor", "chunk_text"]
 
 
 def chunk_text(text: str, chunk_size: int, overlap: int) -> list[str]:
@@ -55,7 +52,7 @@ def chunk_text(text: str, chunk_size: int, overlap: int) -> list[str]:
 
 
 class Ingestor:
-    def __init__(self, client: TogetherClient, qdrant: QdrantClient,
+    def __init__(self, client: Embedder, qdrant: QdrantClient,
                  embedding_model: str):
         self.client = client
         self.qdrant = qdrant
@@ -64,6 +61,11 @@ class Ingestor:
     def _ensure_collection(self, collection: str, dim: int) -> None:
         """Create the collection with a dense vector + a BM25 sparse vector.
         Idempotent: recreates cleanly so re-ingesting a profile is safe."""
+    # Imported inside the method: `qdrant_client` costs ~8s to import,
+    # and the app imports this module at startup while only *using* it
+    # during an ingest or a retrieval.
+        from qdrant_client import models
+
         if self.qdrant.collection_exists(collection):
             self.qdrant.delete_collection(collection)
         self.qdrant.create_collection(
@@ -95,6 +97,8 @@ class Ingestor:
         buffer: list[tuple[str, str, str, str]] = []  # (chunk_id, doc_id, text, uri)
         total = 0
         created = False
+
+        from qdrant_client import models
 
         def flush(buf):
             nonlocal created, total

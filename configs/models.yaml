@@ -1,15 +1,107 @@
-# The models under test — the variable in every experiment.
-# Every string here must have a matching entry in pricing.yaml.
-# Pick a spread across the cost/accuracy/latency frontier: small dense, mid,
-# large dense, and an MoE.
+# The models under test - the variable in every experiment.
+#
+# This config is set up for TWO keys: Together AI and OpenRouter. Either alone
+# is enough to run everything, including RAG; both together gives you Together's
+# cheap open-weight inference plus OpenRouter's access to frontier models in one
+# matrix.
+#
+# Set whichever keys you have:
+#   TOGETHER_API_KEY=...
+#   OPENROUTER_API_KEY=...
+#
+# Then check the routing before spending anything:
+#   python main.py validate --profile regulated_qa
+
+# Which provider a bare (unprefixed) model string belongs to.
+# Flip this to `openrouter` to run OpenRouter-only - see the block at the bottom.
+default_provider: together
+
+# Model strings may carry a `provider:` prefix. Without one they use
+# `default_provider`, so a single-vendor config stays short.
+#
+# Note the two namespaces are NOT interchangeable even when the name looks the
+# same: Together's "openai/gpt-oss-120b" and OpenRouter's are the same weights
+# at different prices, which is why pricing.yaml can key either one.
 models:
+  # --- Together: cheap open-weight inference -------------------------------
   - "openai/gpt-oss-20b"
   - "openai/gpt-oss-120b"
-  - "Qwen/Qwen3.5-9B"
   - "Qwen/Qwen2.5-7B-Instruct-Turbo"
 
-# The judge is fixed. It must NOT share a family with any model under test on the
-# items it grades (the code enforces this). 
+  # --- OpenRouter: everything else, same run -------------------------------
+  # Uncomment to add frontier models to the comparison. They cost 10-100x the
+  # open-weight models above, so `estimate` before running and set a budget.
+  # - "openrouter:openai/gpt-5.2"
+  # - "openrouter:anthropic/claude-sonnet-4.6"
+  # - "openrouter:google/gemini-2.5-pro"
+  # - "openrouter:meta-llama/llama-3.3-70b-instruct"
+
+# The judge is fixed and must NOT share a family with any model it grades; the
+# code enforces this and errors rather than reporting self-preferential scores.
+# With gpt-oss and Qwen under test, a Llama judge is a safe third family.
 judge_model: "meta-llama/Llama-3.3-70B-Instruct-Turbo"
-# Reranker (used only when a profile / candidate enables reranking).
+
+# Optional panel of judges. With more than one, pointwise scores become the
+# median and their spread is recorded as `judge_disagreement` - high spread
+# flags an ambiguous ITEM rather than a bad model, which is a dataset finding.
+# Costs one judge call per member per item, so it is off by default.
+judge_ensemble: []
+
+# Reranker. Together has a rerank endpoint; OpenRouter does not. Leave blank to
+# skip - a provider without rerank degrades to identity with a warning rather
+# than failing every item.
 rerank_model: ""
+
+# ---------------------------------------------------------------------------
+# Capability routing
+# ---------------------------------------------------------------------------
+# Embeddings, reranking and judging are part of the fixed APPARATUS, not the
+# variable under test, so they are pinned rather than following whichever model
+# is being evaluated. If two models saw different retrieved passages, the run
+# measures the embedders, not the models.
+#
+# Both providers serve embeddings, so either works. Together is pinned here
+# because it also has the rerank endpoint, keeping the whole apparatus on one
+# provider while the models under test range across both.
+embedding_provider: together
+rerank_provider: together
+judge_provider: together
+
+# ---------------------------------------------------------------------------
+# Per-provider settings
+# ---------------------------------------------------------------------------
+# api_key    - defaults to the provider's env var (TOGETHER_API_KEY,
+#              OPENROUTER_API_KEY, ...). Prefer the environment over this file.
+# base_url   - override the endpoint; required only for an unlisted vendor.
+# rate_limit - requests/second, proactively paced. 0 disables. Set this if a
+#              run keeps hitting 429s: pacing is cheaper than backing off.
+providers:
+  together:
+    rate_limit: 0
+  openrouter:
+    rate_limit: 0
+
+# ---------------------------------------------------------------------------
+# Running OpenRouter-only
+# ---------------------------------------------------------------------------
+# OpenRouter serves an OpenAI-shaped /v1/embeddings endpoint, so it can build
+# the vector index as well as run the models - no second key needed. Replace
+# the blocks above with:
+#
+#   default_provider: openrouter
+#   models:
+#     - "openai/gpt-5.2"
+#     - "anthropic/claude-sonnet-4.6"
+#     - "meta-llama/llama-3.3-70b-instruct"
+#   judge_model: "google/gemini-2.5-pro"     # a fourth family, grades none of them
+#   rerank_model: ""                          # no rerank endpoint on OpenRouter
+#   embedding_provider: openrouter
+#   rerank_provider: openrouter
+#   judge_provider: openrouter
+#
+# and set the profile's embedding_model to an OpenRouter one, e.g.
+#   embedding_model: "baai/bge-m3"                    # 1024-dim, $0.01/M
+#   embedding_model: "openai/text-embedding-3-small"  # 1536-dim, $0.02/M
+#
+# Changing the embedder changes the Qdrant collection name, so re-run `ingest`.
+# That is deliberate: vectors from two different embedders are not comparable.

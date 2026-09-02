@@ -1,8 +1,35 @@
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+
+# Virtual environments — never commit these. A .venv is ~12,000 files, is
+# platform-specific, and is fully reconstructible from requirements.txt.
+.venv/
+venv/
+env/
+ENV/
+
+# Harness output
 .cache/
 .cache_latency_scratch/
 runs/
-.env
-*.parquet
 workspace/
+*.parquet
+report.html
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
