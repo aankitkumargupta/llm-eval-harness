@@ -1,4 +1,6 @@
-# Multi-Model LLM Evaluation Harness
+# Evaluation Intelligence
+
+A multi-model LLM evaluation harness.
 
 A model-agnostic benchmarking suite that ranks LLMs for a specific workload against **accuracy, cost, latency, robustness and safety**, and then tells you whether the differences it found are real.
 

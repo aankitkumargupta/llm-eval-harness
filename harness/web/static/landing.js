@@ -1,4 +1,4 @@
-/* Landing and sign-in for the Evaluation Harness. Vanilla JS on purpose: the app is served by
+/* Landing and sign-in for the Evaluation Intelligence. Vanilla JS on purpose: the app is served by
    a stdlib server and ships no framework. Nothing here computes a metric;
    the numbers on this page are the product's own counts. */
 
@@ -9,7 +9,7 @@ const LANGS = ["en", "hi", "mr"];
 const LANG_LABELS = { en: "EN", hi: "हि", mr: "म" };
 
 const STR = {
-  brand: { en: "Evaluation Harness", hi: "इवैल्युएशन हार्नेस", mr: "इव्हॅल्युएशन हार्नेस" },
+  brand: { en: "Evaluation Intelligence", hi: "इवैल्युएशन इंटेलिजेंस", mr: "इव्हॅल्युएशन इंटेलिजन्स" },
   brandSub: { en: "Institutional LLM evaluation", hi: "संस्थागत एलएलएम मूल्यांकन", mr: "संस्थात्मक एलएलएम मूल्यांकन" },
   navReal: { en: "What's real", hi: "क्या वास्तविक है", mr: "काय खरे आहे" },
   navScreens: { en: "Screens", hi: "स्क्रीन", mr: "स्क्रीन" },
@@ -22,7 +22,7 @@ const STR = {
   subCopy: { en: "A model × profile × pass matrix over your own data: every item scored, every rupee of spend metered from the provider's own counts, every failure mode measured on its own, and a paired, corrected test that decides whether the order means anything. Sovereign infrastructure that runs on your machine; the traces stay in your control.",
     hi: "आपके अपने डेटा पर मॉडल × प्रोफ़ाइल × पास मैट्रिक्स: हर आइटम स्कोर, हर खर्च प्रदाता की अपनी गणना से मापा हुआ, हर विफलता अलग से मापी हुई, और एक युग्मित, संशोधित परीक्षण जो तय करता है कि क्रम का अर्थ है या नहीं। आपकी मशीन पर चलने वाला संप्रभु ढाँचा; ट्रेस आपके नियंत्रण में रहते हैं।",
     mr: "तुमच्या स्वतःच्या डेटावर मॉडेल × प्रोफाइल × पास मॅट्रिक्स: प्रत्येक आयटम स्कोअर, प्रत्येक खर्च पुरवठादाराच्या स्वतःच्या संख्येवरून मोजलेला, प्रत्येक अपयश स्वतंत्रपणे मोजलेले, आणि क्रमाला अर्थ आहे का हे ठरवणारी जोडी, दुरुस्त चाचणी. तुमच्या मशीनवर चालणारी सार्वभौम पायाभूत सुविधा; ट्रेस तुमच्या नियंत्रणात राहतात." },
-  enterCta: { en: "Enter the Evaluation Harness", hi: "इवैल्युएशन हार्नेस में प्रवेश करें", mr: "इव्हॅल्युएशन हार्नेसमध्ये प्रवेश करा" },
+  enterCta: { en: "Enter the Evaluation Intelligence", hi: "इवैल्युएशन इंटेलिजेंस में प्रवेश करें", mr: "इव्हॅल्युएशन इंटेलिजन्समध्ये प्रवेश करा" },
   goToWorkspace: { en: "Go to workspace", hi: "कार्यक्षेत्र पर जाएँ", mr: "कार्यक्षेत्रावर जा" },
   seeReal: { en: "See what's actually real", hi: "देखें क्या वास्तव में वास्तविक है", mr: "प्रत्यक्षात काय खरे आहे ते पहा" },
   statFailure: { en: "failure modes it is built against", hi: "जिन विफलताओं के विरुद्ध बना", mr: "ज्या अपयशांविरुद्ध बांधले" },
@@ -63,7 +63,7 @@ const STR = {
   cons3d: { en: "Not the highest score: the cheapest model that clears your bar at your daily volume, with the cost of every extra point.", hi: "सबसे ऊँचा स्कोर नहीं: आपकी दैनिक मात्रा पर आपकी सीमा पार करने वाला सबसे सस्ता मॉडल, हर अतिरिक्त अंक की कीमत सहित।", mr: "सर्वाधिक स्कोअर नाही: तुमच्या दैनंदिन प्रमाणात तुमची मर्यादा पार करणारे सर्वात स्वस्त मॉडेल, प्रत्येक अतिरिक्त गुणाच्या किमतीसह." },
   readyTitle: { en: "Ready to find out which model actually clears your bar?", hi: "जानने को तैयार हैं कि कौन सा मॉडल वास्तव में आपकी सीमा पार करता है?", mr: "कोणते मॉडेल खरोखर तुमची मर्यादा पार करते हे जाणून घेण्यास तयार आहात?" },
   readyBody: { en: "Seventeen screens, one trace store, one significance implementation: evaluation, benchmarks, probes and decisions, built for institutions that have to answer for the models they deploy.", hi: "सत्रह स्क्रीन, एक ट्रेस स्टोर, एक महत्व कार्यान्वयन: मूल्यांकन, बेंचमार्क, प्रोब और निर्णय, उन संस्थाओं के लिए जिन्हें अपने मॉडलों का जवाब देना है।", mr: "सतरा स्क्रीन, एक ट्रेस स्टोअर, एक लक्षणीयता अंमलबजावणी: मूल्यांकन, बेंचमार्क, प्रोब आणि निर्णय, ज्यांना त्यांच्या मॉडेलचे उत्तर द्यावे लागते अशा संस्थांसाठी." },
-  footerTag: { en: "Evaluation Harness · Institutional LLM evaluation", hi: "इवैल्युएशन हार्नेस · संस्थागत एलएलएम मूल्यांकन", mr: "इव्हॅल्युएशन हार्नेस · संस्थात्मक एलएलएम मूल्यांकन" },
+  footerTag: { en: "Evaluation Intelligence · Institutional LLM evaluation", hi: "इवैल्युएशन इंटेलिजेंस · संस्थागत एलएलएम मूल्यांकन", mr: "इव्हॅल्युएशन इंटेलिजन्स · संस्थात्मक एलएलएम मूल्यांकन" },
   footerNote: { en: "A working pilot, honest about what is measured and what is not; see", hi: "एक कार्यशील पायलट, जो मापा गया और जो नहीं, उसके बारे में ईमानदार; देखें", mr: "एक कार्यरत पायलट, काय मोजले आणि काय नाही याबद्दल प्रामाणिक; पहा" },
   footerLink: { en: "what's actually real", hi: "क्या वास्तव में वास्तविक है", mr: "प्रत्यक्षात काय खरे आहे" },
   back: { en: "‹ Back", hi: "‹ वापस", mr: "‹ मागे" },

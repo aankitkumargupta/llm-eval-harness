@@ -160,7 +160,7 @@ server {
     ssl_certificate     /etc/ssl/certs/eval.crt;
     ssl_certificate_key /etc/ssl/private/eval.key;
 
-    auth_basic           "LLM Eval Harness";
+    auth_basic           "Evaluation Intelligence";
     auth_basic_user_file /etc/nginx/.htpasswd;
 
     location / {

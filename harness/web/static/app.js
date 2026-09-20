@@ -1,5 +1,5 @@
 /* ===========================================================================
-   Eval Harness: the whole client.
+   Evaluation Intelligence: the whole client.
 
    No framework. The page is a dozen screens over a JSON API, and a render
    function that replaces one container is the entire state management this
