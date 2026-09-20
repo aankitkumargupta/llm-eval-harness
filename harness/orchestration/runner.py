@@ -51,7 +51,7 @@ class RunContext:
     """Everything a run needs that isn't the eval item itself.
 
     Depends on protocols (`KeyValueCache`) rather than concrete classes where a
-    substitution is genuinely useful — the latency lane swaps in a null cache,
+    substitution is genuinely useful, the latency lane swaps in a null cache,
     and tests swap in fakes.
     """
 
@@ -71,24 +71,30 @@ class RunContext:
     provider: str = ""
     abstention_judge: bool = False
     label_set: list[str] = field(default_factory=list)
+    target_script: str = ""       # for native_script_ratio; "" = not scored
     # Injectable so a caller can add a metric family without touching this
     # module, and so tests can run one scorer in isolation.
     scorers: tuple[Scorer, ...] = DEFAULT_SCORERS
 
 
-def _meter_delta(before: dict, after: dict, key: str) -> float:
-    """Spend on one subsystem attributable to this item, from the shared meter.
+def _item_spend(ctx: RunContext) -> dict:
+    """Spend on each subsystem attributable to this item, from the meter's
+    per-thread ledger.
 
-    Deriving per-item cost from a meter delta rather than re-pricing tokens
-    locally means it always reconciles with the run total — including cache
-    hits, which correctly cost nothing.
+    Read from the meter rather than re-priced locally so it always reconciles
+    with the run total, including cache hits, which correctly cost nothing.
 
-    Caveat worth naming: under concurrency, other threads bill against the same
-    meter between the two reads, so a single row's non-generation costs are an
-    apportionment rather than an exact attribution. The run-level totals are
-    exact, which is what the budget and the cost report are built on.
+    This replaced a delta of the SHARED meter taken around the item. Under
+    concurrency other threads billed between the two reads, so every row also
+    counted its neighbours' judge calls: 7.9x over on an eight-worker run,
+    with the error landing on whichever rows happened to be in flight rather
+    than on the models that spent it. The ledger is per thread, and one item
+    runs entirely on one worker thread, so it is exact, and every call lands
+    in exactly one ledger, so the rows still sum to the total.
     """
-    return max(0.0, after.get(key, 0.0) - before.get(key, 0.0))
+    if ctx.meter is None or not hasattr(ctx.meter, "take_item"):
+        return {}
+    return ctx.meter.take_item()
 
 
 # --------------------------------------------------------------------------- #
@@ -98,7 +104,7 @@ def _check_budget(ctx: RunContext) -> None:
     """Stop before spending, not after.
 
     Once the ceiling is crossed, every queued item would otherwise still issue
-    its API call and only then discover the budget is gone — you would pay for
+    its API call and only then discover the budget is gone, you would pay for
     the entire remaining matrix and throw all of it away.
     """
     if ctx.meter is not None and getattr(ctx.meter, "tripped", False):
@@ -136,9 +142,12 @@ def _generate(model: str, messages: list[dict], ctx: RunContext,
         row.completion_tokens = cached.get("completion_tokens")
         row.finish_reason = cached.get("finish_reason")
         row.truncated = cached.get("finish_reason") == "length"
+        row.usage_estimated = cached.get("usage_estimated", False)
+        row.reasoning_tokens = cached.get("reasoning_tokens")
+        row.reasoning_chars = cached.get("reasoning_chars")
         if ctx.meter is not None:
             ctx.meter.record_cache_hit()
-        # Latency is deliberately NOT restored from cache — a cached timing is
+        # Latency is deliberately NOT restored from cache, a cached timing is
         # a fabrication. The latency lane bypasses the cache entirely.
         return
 
@@ -150,20 +159,27 @@ def _generate(model: str, messages: list[dict], ctx: RunContext,
     row.ttft_ms = gen.ttft_ms
     row.finish_reason = gen.finish_reason
     row.truncated = gen.truncated
+    row.usage_estimated = gen.usage_estimated
+    row.reasoning_tokens = gen.reasoning_tokens
+    row.reasoning_chars = gen.reasoning_chars
     ctx.cache.set(cache_key, {
         "text": gen.text, "prompt_tokens": gen.prompt_tokens,
         "completion_tokens": gen.completion_tokens,
         "finish_reason": gen.finish_reason,
+        # Carried through the cache so a replayed row does not launder an
+        # estimate into a measurement.
+        "usage_estimated": gen.usage_estimated,
+        "reasoning_tokens": gen.reasoning_tokens,
+        "reasoning_chars": gen.reasoning_chars,
     })
 
 
-def _attribute_cost(row: TraceRow, ctx: RunContext, model: str,
-                    meter_before: dict) -> None:
+def _attribute_cost(row: TraceRow, ctx: RunContext, model: str) -> None:
     """Split this item's spend by the subsystem that caused it.
 
-    Generation is priced directly; judge, embedding and rerank come from meter
-    deltas. An unpriced model leaves the field None rather than 0.0 — a
-    zero-cost model would win any cost-weighted leaderboard.
+    Generation is priced directly; judge, embedding and rerank come from the
+    meter's per-thread ledger. An unpriced model leaves the field None rather
+    than 0.0, a zero-cost model would win any cost-weighted leaderboard.
     """
     if row.prompt_tokens is not None:
         try:
@@ -172,11 +188,11 @@ def _attribute_cost(row: TraceRow, ctx: RunContext, model: str,
         except KeyError:
             row.gen_cost_usd = None
 
-    if ctx.meter is not None:
-        after = ctx.meter.summary()
-        row.judge_cost_usd = _meter_delta(meter_before, after, "judge_usd")
-        row.embed_cost_usd = _meter_delta(meter_before, after, "embedding_usd")
-        row.rerank_cost_usd = _meter_delta(meter_before, after, "rerank_usd")
+    spend = _item_spend(ctx)
+    if spend:
+        row.judge_cost_usd = spend["judge_usd"]
+        row.embed_cost_usd = spend["embedding_usd"]
+        row.rerank_cost_usd = spend["rerank_usd"]
 
     row.cost_usd = sum(
         v for v in (row.gen_cost_usd, row.judge_cost_usd,
@@ -218,7 +234,8 @@ def run_item(
         human_label=item.human_label,
     )
 
-    meter_before = ctx.meter.summary() if ctx.meter is not None else {}
+    if ctx.meter is not None and hasattr(ctx.meter, "begin_item"):
+        ctx.meter.begin_item()
 
     try:
         _check_budget(ctx)
@@ -250,6 +267,7 @@ def run_item(
                     f"[{c.chunk_id}] {c.text}" for c in attacked),
                 judge=ctx.judge, abstention_judge=ctx.abstention_judge,
                 label_set=ctx.label_set,
+                target_script=ctx.target_script,
             ),
             scorers=ctx.scorers,
         )
@@ -261,9 +279,9 @@ def run_item(
             row.error = "; ".join(f"{k}: {v}" for k, v in scoring.failures.items())
             row.error_kind = "scoring"
 
-        _attribute_cost(row, ctx, model, meter_before)
+        _attribute_cost(row, ctx, model)
 
-    except Exception as e:  # noqa: BLE001 — record failure, don't kill the matrix
+    except Exception as e:  # noqa: BLE001, record failure, don't kill the matrix
         row.error = f"{type(e).__name__}: {e}"
         row.error_kind = classify_error(e)
         # A budget trip must stop the whole run, not just mark one item. Every

@@ -9,7 +9,7 @@ half calls the other directly.
 rewrite-whole-file, because Parquet can't append in place. That's O(n²) in total
 bytes written, and the tuning search calls `write()` once per candidate per
 model. A 20-candidate search over 4 models is 80 full rewrites of a file that
-grows the whole time — by the end, most of the run's wall-clock is Parquet I/O,
+grows the whole time, by the end, most of the run's wall-clock is Parquet I/O,
 not inference. Worse, a crash mid-rewrite could leave a truncated store holding
 *nothing*, losing hours of paid API calls.
 
@@ -42,7 +42,7 @@ class TraceStore:
         """`path` may be a directory (new layout) or a .parquet file (legacy).
 
         A path ending in `.parquet` that does not already exist is treated as a
-        directory root — new stores get the fast layout while existing files are
+        directory root, new stores get the fast layout while existing files are
         still opened as files.
         """
         p = Path(path)
@@ -60,7 +60,7 @@ class TraceStore:
             # who ran the harness before the append-only rewrite has their
             # results in `workspace/traces.parquet` next to it. Without this
             # their entire history silently disappears from the app and every
-            # report — the data is intact on disk and simply never read, which
+            # report, the data is intact on disk and simply never read, which
             # is the worst shape a migration bug can take.
             sibling = self.root.with_suffix(".parquet")
             if sibling.exists() and sibling.is_file():
@@ -83,7 +83,7 @@ class TraceStore:
             self._seq += 1
             seq = self._seq
         # The uuid suffix keeps parts unique across processes writing the same
-        # store (the UI thread and a CLI run, say) — a bare counter would collide.
+        # store (the UI thread and a CLI run, say), a bare counter would collide.
         part = self.root / f"part-{seq:06d}-{uuid.uuid4().hex[:8]}.parquet"
         tmp = part.with_suffix(".parquet.tmp")
         df.to_parquet(tmp, index=False)
@@ -107,7 +107,7 @@ class TraceStore:
         """Run DuckDB SQL against the store, with `traces` wired to the data.
 
         Pass values via `params` and `?` placeholders rather than formatting
-        them into the SQL — the old call sites interpolated a profile name
+        them into the SQL, the old call sites interpolated a profile name
         straight into a WHERE clause, which breaks on any name containing a
         quote and is an injection vector wherever that name is user-supplied.
 
@@ -147,7 +147,7 @@ class TraceStore:
         """One row per run: when, which profile, how many rows, how many errors.
 
         This is what makes run-over-run comparison and the CI regression gate
-        possible — you cannot diff two runs you cannot enumerate.
+        possible, you cannot diff two runs you cannot enumerate.
         """
         if not self._sources():
             return pd.DataFrame()
@@ -162,7 +162,7 @@ class TraceStore:
         )
 
     def compact(self) -> int:
-        """Fold every part into one file. Purely housekeeping — never required.
+        """Fold every part into one file. Purely housekeeping, never required.
 
         Many small parts are fine for DuckDB but awkward to copy around; this
         makes a store portable as a single artifact.

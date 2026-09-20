@@ -1,5 +1,5 @@
 """
-Provider endpoint metadata — plain data, no SDK.
+Provider endpoint metadata, plain data, no SDK.
 
 This table lives apart from the adapter that uses it because it is *just
 strings*, and importing it should not cost anything. `openai_compatible.py`
@@ -9,7 +9,7 @@ that price for nothing.
 
 That was not hypothetical. The Capabilities screen reads this table, Streamlit
 executes every tab body on every rerun, and pulling the adapter in for a dict of
-strings added ~19s to the first page load — the app looked hung.
+strings added ~19s to the first page load, the app looked hung.
 
 Adding a provider is still one entry here. The adapter re-exports the table, so
 existing imports keep working.
@@ -18,7 +18,7 @@ existing imports keep working.
 from __future__ import annotations
 
 # Known endpoints, so `provider: together` in a config is all a user has to
-# write. An unlisted vendor still works — pass `base_url` explicitly.
+# write. An unlisted vendor still works, pass `base_url` explicitly.
 PROVIDER_ENDPOINTS: dict[str, dict] = {
     "together": {
         "base_url": "https://api.together.xyz/v1",
@@ -60,6 +60,20 @@ PROVIDER_ENDPOINTS: dict[str, dict] = {
         # No rerank endpoint: chat, embeddings, images, video, audio only.
         "supports_rerank": False,
     },
+    # --- offline ----------------------------------------------------------
+    # Not a vendor: a deterministic local provider so CI, the §12 verification
+    # gate and `bench run --models fake:a` work with no key and no network.
+    # Listed here (rather than in tests/) so the code path CI exercises is the
+    # same one a user runs.
+    "fake": {
+        "base_url": "local://fake",
+        "api_key_env": "",
+        "default_api_key": "none",
+        "supports_rerank": False,
+        "supports_embeddings": True,
+        "local": True,
+    },
+
     # --- self-hosted -------------------------------------------------------
     # These are the reason the abstraction exists: "is the hosted API worth it
     # versus what we can run ourselves?" is a cost question you cannot answer
@@ -98,6 +112,18 @@ NON_OPENAI_PROVIDERS: dict[str, dict] = {
         "supports_embeddings": False,   # Anthropic serves no embedding models
         "supports_rerank": False,
         "supports_seed": False,
+    },
+    # FastEmbed on the local CPU. Embeddings ONLY: the adapter has no generate
+    # method, so it can never be a model under test. Exists because the pinned
+    # hosted embedder was not invokable on the account (docs/DEBT.md R-20).
+    "local": {
+        "base_url": "local://fastembed",
+        "api_key_env": "",
+        "default_api_key": "none",
+        "supports_embeddings": True,
+        "supports_rerank": False,
+        "supports_seed": False,
+        "local": True,
     },
 }
 

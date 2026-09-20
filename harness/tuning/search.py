@@ -6,7 +6,7 @@ profile's declared knobs, evaluate each on a HELD-OUT DEV split, keep the best.
 N is identical for every model, which is what makes "equal tuning budget"
 literally true rather than aspirational.
 
-Model weights are frozen — tuning only searches prompt, few-shot, context order
+Model weights are frozen, tuning only searches prompt, few-shot, context order
 and retrieval params. The winner is then run once on the TEST split; that run is
 the adapted result, and the baseline-vs-adapted delta on test is the tuning-gain
 signal.
@@ -16,12 +16,12 @@ Two things beyond the original:
 **Successive halving.** Pure random search spends the same dev budget on an
 obviously bad candidate as on the winner. Halving evaluates all candidates on a
 small dev slice, keeps the top half, doubles the slice, repeats. Same total
-evaluations, far more of them spent on candidates that might actually win — and
+evaluations, far more of them spent on candidates that might actually win, and
 because the schedule depends only on the budget, it stays identical across
 models, so equal-budget fairness survives.
 
 **Deduplication.** The grid can contain configs that differ only in a parameter
-the rest of the config makes irrelevant — `rerank_top_n` when `rerank` is False
+the rest of the config makes irrelevant: `rerank_top_n` when `rerank` is False
 is the obvious one. Sampling those wastes a slot on a literal duplicate of
 another candidate, and it does so unequally across profiles.
 """
@@ -145,7 +145,7 @@ def search(profile: Profile, model: str,
     if not candidates:
         raise ValueError(
             f"Profile '{profile.name}' produced no tuning candidates. Check its "
-            f"`knobs:` block — every list must have at least one entry.")
+            f"`knobs:` block, every list must have at least one entry.")
     scores: list[float] = []
     best_idx, best_score = 0, float("-inf")
     for i, cand in enumerate(candidates):
@@ -185,7 +185,7 @@ def search_halving(
 
     `evaluate(candidate, n_items)` scores a candidate on the first `n_items` of
     the dev split. Using a *prefix* rather than a random subsample keeps early
-    rounds comparable across candidates — otherwise a candidate could win by
+    rounds comparable across candidates, otherwise a candidate could win by
     drawing an easier slice, which is the failure mode this is meant to avoid.
     """
     candidates = enumerate_candidates(profile, profile.tuning_budget, seed=seed)

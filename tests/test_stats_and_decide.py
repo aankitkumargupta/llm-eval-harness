@@ -54,6 +54,20 @@ def _frame(spec: dict[str, list[float]], pass_: str = "baseline") -> pd.DataFram
 #  Pairing
 # --------------------------------------------------------------------------- #
 def test_paired_values_aligns_on_shared_items_only():
+    """Pairing, when the caller has explicitly accepted the loss.
+
+    This test previously asserted `len(a) == 2, "must drop the unpaired item"`
+    against the *default* call — pinning the silent-drop behaviour that Phase 0
+    recorded as finding R-01. The test was wrong, not merely outdated: CLAUDE.md
+    §9 Phase 5 step 3 requires items scored by one model but not another to
+    "raise, not drop silently, or pairing (I1) is broken". Dropping selects the
+    comparison set by one model's failures, which biases it toward easy items.
+
+    The behaviour it meant to check — that alignment keeps only shared items —
+    is still real and still worth pinning, so it is kept here on the explicit
+    `on_unpaired="drop"` path. The default now raises; see
+    `tests/test_invariants.py` for that half.
+    """
     df = pd.DataFrame([
         {"model": "A", "item_id": "q1", "accuracy": 1.0},
         {"model": "A", "item_id": "q2", "accuracy": 0.0},
@@ -61,8 +75,8 @@ def test_paired_values_aligns_on_shared_items_only():
         {"model": "B", "item_id": "q1", "accuracy": 0.0},
         {"model": "B", "item_id": "q2", "accuracy": 1.0},
     ])
-    a, b = paired_values(df, "A", "B", "accuracy")
-    assert len(a) == len(b) == 2, "must drop the unpaired item"
+    a, b = paired_values(df, "A", "B", "accuracy", on_unpaired="drop")
+    assert len(a) == len(b) == 2, "aligns on the shared items"
 
 
 def test_pairing_detects_a_difference_that_marginal_intervals_would_hide():

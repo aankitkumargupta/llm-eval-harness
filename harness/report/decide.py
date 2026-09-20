@@ -7,19 +7,19 @@ that decision. The real one is constrained:
     "cheapest model with faithfulness >= 0.90 and p95 latency <= 2000 ms,
      that we can afford at 50,000 queries a day"
 
-The original harness produced every input to that answer — accuracy, cost,
-latency, a Pareto frontier — and then stopped, leaving the user to eyeball four
+The original harness produced every input to that answer, accuracy, cost,
+latency, a Pareto frontier, and then stopped, leaving the user to eyeball four
 tables and do the arithmetic. That gap is where benchmark results go to die: the
 work was done, the decision still wasn't made.
 
 Three things here:
 
-  select        — constraint satisfaction over per-model aggregates, returning a
+  select, constraint satisfaction over per-model aggregates, returning a
                   ranked shortlist and, crucially, *why* each rejected model was
                   rejected
-  project_cost  — per-query cost extrapolated to daily/monthly spend at volume,
+  project_cost, per-query cost extrapolated to daily/monthly spend at volume,
                   because $0.0004 per query sounds free until it's 50k/day
-  headroom      — how much accuracy you buy per extra dollar, so "the expensive
+  headroom, how much accuracy you buy per extra dollar, so "the expensive
                   model is 2% better" becomes "2% better for $4,200/month"
 """
 
@@ -57,7 +57,7 @@ class Constraint:
     value: float
 
     def satisfied_by(self, actual: float | None) -> bool | None:
-        """None when the metric wasn't measured — unknown, not failed.
+        """None when the metric wasn't measured, unknown, not failed.
 
         The distinction matters: silently treating an unmeasured metric as a
         failure would reject every model on a profile that didn't activate it,
@@ -108,7 +108,7 @@ def model_aggregates(df: pd.DataFrame,
 
     Latency is taken from the latency-lane rows when they exist and only falls
     back to throughput rows otherwise. Mixing the two would report your own
-    queuing delay as model latency — precisely the mistake the two-lane design
+    queuing delay as model latency, precisely the mistake the two-lane design
     exists to prevent, and one that is invisible in the final number.
 
     p95 rather than the mean, because SLAs are written on tails. A model with a
@@ -178,7 +178,7 @@ def select(df: pd.DataFrame, constraints: list[Constraint],
             if ok is None:
                 cand.unknowns.append(c.describe())
                 # An unmeasured requirement cannot be confirmed, so the model is
-                # not eligible — but it's reported as "unmeasured", never as a
+                # not eligible, but it's reported as "unmeasured", never as a
                 # failure it didn't earn.
                 cand.eligible = False
             elif not ok:
@@ -266,7 +266,7 @@ def headroom(df: pd.DataFrame, quality_metric: str = "accuracy",
 
     Converts "the big model is 3 points better" into "3 points for $1,850 a
     month", which is the form the decision is actually made in. A negative
-    `usd_per_point` marks a model that is both worse and more expensive — a
+    `usd_per_point` marks a model that is both worse and more expensive, a
     strictly dominated option, and the fastest thing to cut from a shortlist.
     """
     proj = project_cost(df, queries_per_day)

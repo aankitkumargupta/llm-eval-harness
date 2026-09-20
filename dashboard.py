@@ -2,14 +2,14 @@
 Results dashboard for the evaluation harness.
 
 Read-only view over the trace store (runs/traces.parquet). It renders exactly the
-aggregates the harness already computes in harness/report/aggregate.py — no new
+aggregates the harness already computes in harness/report/aggregate.py, no new
 analysis logic lives here, so the dashboard can never disagree with `main.py
 report`. It just displays those numbers with filtering and charts.
 
 Run it with:
     streamlit run dashboard.py
 
-It does NOT make any Together calls or touch Qdrant — it only reads the Parquet
+It does NOT make any Together calls or touch Qdrant, it only reads the Parquet
 file produced by `python main.py run`. So it's safe to leave open and refresh
 while runs complete.
 """
@@ -213,7 +213,7 @@ with tab_sig:
 
 # ---- Leaderboard: weighted composite ------------------------------------- #
 with tab_board:
-    st.subheader(f"Weighted composite — {profile}")
+    st.subheader(f"Weighted composite, {profile}")
     if profile_cfg and profile_cfg.metric_weights:
         st.caption("Composite uses this profile's metric weights "
                    "(negative weights = lower-is-better, e.g. cost).")

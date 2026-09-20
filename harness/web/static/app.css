@@ -1,0 +1,786 @@
+/* ===========================================================================
+   Eval Harness design system.
+
+   Navy and gold, a serif display face set tight, mono eyebrows set wide, and a
+   faint gold graph-paper grid under everything. The grid is not decoration: it
+   is the one texture that suits an instrument, and at 4% it reads as paper
+   rather than as a pattern.
+
+   **No web fonts, no CDN, nothing fetched.** The harness runs offline by
+   design, and a UI that needs the network to look right looks broken on a
+   plane. The display face is Georgia, a system serif on every platform this
+   runs on, so the serif/mono contrast that carries the identity survives with
+   zero requests. A downloaded face would look marginally better and would fail
+   completely on an air-gapped machine, which is the wrong trade for this tool.
+
+   Both themes are defined at token level on :root. A colour whose only
+   definition sits inside a theme block renders one theme's text on the other
+   theme's ground: the classic unreadable-page bug. The light theme is a
+   selected design (warm paper, deeper gold, navy ink), not an inversion.
+
+   Spacing is a six-step scale (4, 8, 12, 16, 24, 32). Every padding, gap and
+   margin below is a step on it, or a multiple of one, unless a comment says
+   why it is not. The rhythm rules: sp-4 between sibling blocks (card to card,
+   tile to tile, grid cell to grid cell), sp-6 around the page head and the
+   section rules, sp-2 between a serif heading and its body, sp-1 between a
+   small bold label and its body. --hit is the smallest height any clickable
+   control may have.
+   =========================================================================== */
+
+:root {
+  /* spacing scale ------------------------------------------------------- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --hit: 36px;                  /* minimum height of a clickable control */
+
+  /* ground and surfaces --------------------------------------------------- */
+  --ground: #091128;
+  --ground-2: #0d1834;
+  --surface: rgba(255, 255, 255, .022);
+  --surface-2: rgba(255, 255, 255, .05);
+  --inset: rgba(4, 9, 24, .5);
+  --elevated: linear-gradient(168deg, #1b3163, #0f1c3d);
+
+  /* gold: the whole accent system ----------------------------------------- */
+  --gold: #c9a028;
+  --gold-ink: #e3c873;          /* gold as text: lighter, for contrast */
+  --gold-soft: rgba(201, 160, 40, .12);
+  --hair: rgba(201, 160, 40, .18);
+  --hair-2: rgba(201, 160, 40, .32);
+  --hair-cool: rgba(236, 240, 249, .09);
+
+  /* ink ------------------------------------------------------------------- */
+  --ink: #ecf0f9;
+  --ink-2: rgba(236, 240, 249, .74);
+  --ink-3: rgba(236, 240, 249, .48);
+
+  /* semantic: separate from gold, never used as decoration ---------------- */
+  --ok: #4ec9a4;
+  --ok-soft: rgba(78, 201, 164, .13);
+  --warn: #e0b45c;
+  --warn-soft: rgba(224, 180, 92, .13);
+  --crit: #ef7b74;
+  --crit-soft: rgba(239, 123, 116, .13);
+
+  --shadow: 0 30px 80px rgba(5, 10, 25, .6);
+  --glow:
+    radial-gradient(1100px 620px at 18% -14%, rgba(27, 49, 99, .85), transparent 64%),
+    radial-gradient(760px 460px at 96% 2%, rgba(201, 160, 40, .07), transparent 62%);
+  /* Graph paper. 1px gold lines at 4% on a 34px pitch. */
+  --grid:
+    linear-gradient(rgba(201, 160, 40, .04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(201, 160, 40, .04) 1px, transparent 1px);
+
+  /* Chart series: validated against the dark surface (CVD dE, lightness band,
+     chroma floor, 3:1 contrast). charts.js reads these through var(), so a
+     theme change repaints every chart in place. */
+  --chart-surface: #101c3c;
+  --chart-s1: #ad880f; --chart-s1-dim: #6f5a17; --chart-s2: #4f8ed6; --chart-s3: #1f9470;
+  --chart-muted: #33405f;
+  --chart-good: #4ec9a4; --chart-mid: #e0b45c; --chart-bad: #ef7b74;
+  color-scheme: dark;
+  --serif: Georgia, "Iowan Old Style", "Times New Roman", Times, serif;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", "Segoe UI Mono", Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --r: 16px;
+  --r-sm: 10px;
+}
+
+:root[data-theme="light"] {
+  --ground: #fbf9f3;
+  --ground-2: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f4f0e4;
+  --inset: #fbf9f3;
+  --elevated: linear-gradient(168deg, #ffffff, #f6f2e6);
+  --gold: #8a6a05;
+  --gold-ink: #6f5504;
+  --gold-soft: rgba(138, 106, 5, .09);
+  --hair: rgba(138, 106, 5, .2);
+  --hair-2: rgba(138, 106, 5, .34);
+  --hair-cool: rgba(9, 17, 40, .1);
+  --ink: #0b1430;
+  --ink-2: rgba(11, 20, 48, .74);
+  --ink-3: rgba(11, 20, 48, .5);
+  --ok: #127a5c;
+  --ok-soft: rgba(18, 122, 92, .1);
+  --warn: #8a6314;
+  --warn-soft: rgba(138, 99, 20, .1);
+  --crit: #ad2f28;
+  --crit-soft: rgba(173, 47, 40, .1);
+  --shadow: 0 20px 50px -24px rgba(11, 20, 48, .3);
+  /* Light-surface steps: the mid status step is re-stepped to #c07c10 because
+     the page's own warn/crit tokens sit below the normal-vision separation
+     floor when adjacent in one bar. */
+  --chart-surface: #fbf9f3;
+  --chart-s1: #8a6a05; --chart-s1-dim: #c2a969; --chart-s2: #2a6fb5; --chart-s3: #127a5c;
+  --chart-muted: #d8d2c2;
+  --chart-good: #127a5c; --chart-mid: #c07c10; --chart-bad: #ad2f28;
+  color-scheme: light;
+  --glow: radial-gradient(1000px 540px at 18% -16%, rgba(201, 160, 40, .1), transparent 62%);
+  --grid:
+    linear-gradient(rgba(138, 106, 5, .05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(138, 106, 5, .05) 1px, transparent 1px);
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  /* One shade of ground, edge to edge, with the graph paper on top. The
+     radial glow that used to sit under it repeated at every viewport height
+     and read as a colour band across the page; it is gone on purpose. */
+  background-color: var(--ground);
+  background-image: var(--grid);
+  background-size: 34px 34px, 34px 34px;
+  background-attachment: fixed;
+  color: var(--ink);
+  font: 14px/1.6 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+h1, h2, h3 { margin: 0; text-wrap: balance; }
+code, .m { font-family: var(--mono); font-variant-ligatures: none; }
+::selection { background: var(--gold-soft); }
+
+/* ---------- shell: task bar on top ---------- */
+.app { display: flex; flex-direction: column; min-height: 100%; }
+
+.topbar {
+  position: sticky; top: 0; z-index: 40;
+  background: color-mix(in srgb, var(--ground) 88%, transparent);
+  backdrop-filter: saturate(140%) blur(14px);
+  border-bottom: 1px solid var(--hair);
+  padding-top: env(safe-area-inset-top, 0px);
+}
+/* 58px is the bar's height, not a spacing step: the mobile tab stack and the
+   active-tab underline are both positioned against it. */
+.barrow {
+  display: flex; align-items: center; gap: var(--sp-5);
+  padding: 0 var(--sp-5); height: 58px;
+  max-width: 1500px; margin: 0 auto; width: 100%;
+}
+
+.brand {
+  display: flex; align-items: center; gap: var(--sp-3);
+  flex: 0 0 auto; text-decoration: none; color: inherit;
+}
+.mark {
+  width: 28px; height: 28px; flex: 0 0 auto; border-radius: 7px;
+  background: var(--elevated); border: 1px solid var(--hair-2); position: relative;
+}
+/* A small gold diamond: a mark, not a logo. */
+.mark::after {
+  content: ""; position: absolute; inset: 9px;
+  background: var(--gold); transform: rotate(45deg); border-radius: 1px;
+}
+.brand b {
+  font-family: var(--serif); font-size: 16px; font-weight: 600;
+  letter-spacing: -.03em; display: block; line-height: 1.15;
+}
+.brand span {
+  display: block; font: 9px/1.4 var(--mono); color: var(--gold-ink);
+  letter-spacing: .14em; text-transform: uppercase;
+  margin-top: 1px;              /* optical: seats the caps under the serif */
+}
+
+/* Tier one: the stage of work. */
+.tabs { display: flex; align-items: center; gap: var(--sp-1); flex: 1 1 auto; min-width: 0; }
+.tab {
+  background: none; border: 0; border-radius: var(--r-sm);
+  padding: var(--sp-2) var(--sp-3); cursor: pointer; color: var(--ink-2);
+  font-weight: 500; font-size: 13.5px; white-space: nowrap; position: relative;
+}
+.tab:hover { background: var(--surface-2); color: var(--ink); }
+.tab[aria-current="true"] { color: var(--ink); background: var(--gold-soft); }
+/* The underline sits on the bar's own border, tying the two tiers together.
+   Its inset matches the tab's side padding; the drop is geometry against the
+   58px bar, not a spacing step. */
+.tab[aria-current="true"]::after {
+  content: ""; position: absolute; left: var(--sp-3); right: var(--sp-3); bottom: -13px;
+  height: 2px; background: var(--gold); border-radius: 2px 2px 0 0;
+}
+.tab:focus-visible, .iconbtn:focus-visible, .subtab:focus-visible {
+  outline: 2px solid var(--gold); outline-offset: 2px;
+}
+
+.util { display: flex; align-items: center; gap: var(--sp-3); flex: 0 0 auto; }
+.storeline {
+  font: 10.5px/1.6 var(--mono); color: var(--ink-3); letter-spacing: .04em;
+  white-space: nowrap;
+}
+.iconbtn {
+  background: none; border: 1px solid var(--hair); border-radius: var(--r-sm);
+  color: var(--ink-2); cursor: pointer; width: var(--hit); height: var(--hit);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 14px; flex: 0 0 auto;
+}
+.iconbtn:hover { background: var(--surface-2); color: var(--ink); border-color: var(--hair-2); }
+.menubtn { display: none; }
+
+/* Tier two: the screens inside the active stage. Hidden for single-screen
+   stages, so Guide and About do not show a sub-bar with one item in it. */
+.subbar {
+  display: flex; align-items: center; gap: var(--sp-1);
+  padding: 0 var(--sp-5) var(--sp-2); max-width: 1500px; margin: 0 auto; width: 100%;
+  overflow-x: auto; scrollbar-width: none;
+}
+.subbar::-webkit-scrollbar { display: none; }
+.subbar:empty { display: none; }
+.subtab {
+  background: none; border: 1px solid transparent; border-radius: 999px;
+  padding: var(--sp-2) var(--sp-3); cursor: pointer; color: var(--ink-3);
+  font-size: 12.5px; white-space: nowrap; font-weight: 500;
+}
+.subtab:hover { color: var(--ink); background: var(--surface-2); }
+.subtab[aria-current="true"] {
+  color: var(--ink); border-color: var(--hair-2); background: var(--surface);
+}
+.subtab .ic { font-family: var(--mono); opacity: .7; margin-right: var(--sp-2); }
+
+/* The bottom padding is three steps of sp-6 so the last card clears the
+   viewport edge with room to spare when the page is scrolled to the end. */
+main {
+  padding: var(--sp-6) var(--sp-5) calc(var(--sp-6) * 3);
+  max-width: 1500px; margin: 0 auto; width: 100%; min-width: 0;
+}
+
+@media (max-width: 1000px) {
+  .storeline { display: none; }
+  .tab { padding: var(--sp-2); font-size: 13px; }
+}
+@media (max-width: 820px) {
+  .barrow { gap: var(--sp-3); padding: 0 var(--sp-4); }
+  .menubtn { display: inline-flex; margin-left: auto; }
+  .util { display: none; }
+  /* The section tabs become a disclosed stack rather than a squeezed row: a
+     row that scrolls sideways on a phone hides the items on its right. */
+  .tabs {
+    position: absolute; top: 58px; left: 0; right: 0;
+    flex-direction: column; align-items: stretch; gap: 0;
+    background: var(--ground-2); border-bottom: 1px solid var(--hair);
+    padding: var(--sp-2); display: none;
+  }
+  .tabs.open { display: flex; }
+  .tab { text-align: left; border-radius: var(--r-sm); }
+  .tab[aria-current="true"]::after { display: none; }
+  .subbar { padding: 0 var(--sp-4) var(--sp-2); }
+  main { padding: var(--sp-5) var(--sp-4) calc(var(--sp-6) * 2); }
+}
+
+/* ---------- page head ---------- */
+.head { margin-bottom: var(--sp-6); }
+.eyebrow {
+  display: inline-flex; align-items: center; gap: var(--sp-2);
+  font: 10px/1 var(--mono); letter-spacing: .2em; text-transform: uppercase;
+  color: var(--gold-ink); border: 1px solid var(--hair-2); border-radius: 999px;
+  padding: var(--sp-2) var(--sp-3); background: var(--gold-soft);
+}
+h1 {
+  font-family: var(--serif); font-size: clamp(30px, 4.4vw, 42px);
+  font-weight: 600; letter-spacing: -.033em; margin: var(--sp-4) 0 var(--sp-2);
+  line-height: 1.08;
+}
+.sub { color: var(--ink-2); font-size: 15px; }
+
+/* A hairline that fades at both ends. */
+.rule { height: 1px; border: 0; margin: var(--sp-6) 0;
+  background: linear-gradient(90deg, transparent, var(--hair-2) 50%, transparent); }
+
+/* ---------- surfaces ---------- */
+.card {
+  background: var(--surface); border: 1px solid var(--hair);
+  border-radius: var(--r); padding: var(--sp-5);
+  box-shadow: var(--shadow); margin-bottom: var(--sp-4);
+}
+.card > h3 {
+  font-family: var(--serif); font-size: 17px; font-weight: 600;
+  letter-spacing: -.02em; margin-bottom: var(--sp-2);
+}
+.card > .why, figure > .why {
+  color: var(--ink-3); font-size: 12.5px; margin: 0 0 var(--sp-4);
+}
+
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: var(--sp-4); }
+
+.row { display: flex; gap: var(--sp-3); flex-wrap: wrap; align-items: flex-end; }
+.f { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 140px; flex: 1; }
+.f label {
+  font: 9.5px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase;
+  color: var(--ink-3);
+}
+select, input[type=number], input[type=text], input[type=password], textarea {
+  background: var(--inset); border: 1px solid var(--hair); border-radius: var(--r-sm);
+  padding: var(--sp-3); width: 100%; color: var(--ink);
+}
+select:focus, input:focus, textarea:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
+/* The popup list is drawn by the OS. color-scheme (set per theme on :root)
+   makes it dark in the dark theme; these make the rows legible either way. */
+select option { color: var(--ink); background: var(--ground-2); }
+select option:checked { color: var(--ink); background: var(--gold-soft); }
+textarea { font-family: var(--mono); font-size: 12.5px; min-height: 130px; resize: vertical; }
+
+.btn {
+  background: var(--gold); color: #0b1430; border: 0; border-radius: var(--r-sm);
+  padding: var(--sp-3) var(--sp-5); font-weight: 600; font-size: 13.5px; cursor: pointer;
+  letter-spacing: .01em;
+}
+.btn:hover { filter: brightness(1.1); }
+.btn:disabled { opacity: .35; cursor: not-allowed; filter: none; }
+.btn.ghost {
+  background: transparent; color: var(--ink-2); border: 1px solid var(--hair-2);
+  font-weight: 500;
+}
+.btn.ghost:hover { color: var(--ink); border-color: var(--gold); filter: none; }
+.btn.sm { padding: var(--sp-2) var(--sp-3); font-size: 12.5px; }
+.btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+.pills { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+.pick {
+  border: 1px solid var(--hair); background: var(--surface); border-radius: 999px;
+  padding: var(--sp-2) var(--sp-4); cursor: pointer; font-size: 12px; font-family: var(--mono);
+  color: var(--ink-2); letter-spacing: .02em;
+}
+.pick:hover { border-color: var(--hair-2); color: var(--ink); }
+.pick[aria-pressed="true"] { background: var(--gold); border-color: var(--gold); color: #0b1430; }
+.pick.local[aria-pressed="true"] { background: var(--ok); border-color: var(--ok); color: #05130f; }
+.pick:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* The padding above already clears the hit target at each control's type
+   size; this makes it a guarantee rather than an arithmetic coincidence. */
+.btn, .pick, .tab, .subtab, .iconbtn { min-height: var(--hit); }
+
+/* ---------- KPIs ---------- */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(154px, 1fr)); gap: var(--sp-4); margin-bottom: var(--sp-4); }
+.kpi {
+  background: var(--elevated); border: 1px solid var(--hair);
+  border-radius: var(--r); padding: var(--sp-4); position: relative; overflow: visible; /* popovers from the info buttons must escape the tile */
+}
+.kpi::after {
+  content: ""; position: absolute; inset: 0 0 auto 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--hair-2), transparent);
+}
+/* The numbers wear the serif; this is where the display face earns its place. */
+.kpi .v {
+  font-family: var(--serif); font-size: 28px; font-weight: 600; line-height: 1.1;
+  letter-spacing: -.035em; font-variant-numeric: tabular-nums; word-break: break-word;
+}
+.kpi .k {
+  font: 10px/1.4 var(--mono); letter-spacing: .12em; text-transform: uppercase;
+  color: var(--ink-3); margin-top: var(--sp-2);
+}
+.kpi.ok .v { color: var(--ok); } .kpi.warn .v { color: var(--warn); }
+.kpi.crit .v { color: var(--crit); } .kpi.accent .v { color: var(--gold-ink); }
+
+/* ---------- tables ---------- */
+.tw { overflow-x: auto; border: 1px solid var(--hair); border-radius: var(--r); background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; min-width: 520px; }
+th {
+  text-align: left; font: 500 9.5px/1 var(--mono); letter-spacing: .16em;
+  text-transform: uppercase; color: var(--gold-ink); padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--hair-2); white-space: nowrap;
+  background: var(--surface-2); position: sticky; top: 0;
+}
+td { padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--hair-cool); vertical-align: top; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover td { background: var(--gold-soft); }
+td.n { font-family: var(--mono); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+td.m { font-family: var(--mono); font-size: 12px; }
+.null { color: var(--ink-3); font-style: italic; }
+
+.tag {
+  display: inline-block; font: 500 10px/1 var(--mono); letter-spacing: .08em;
+  text-transform: uppercase; padding: var(--sp-1) var(--sp-2); border-radius: 999px;
+  border: 1px solid transparent; white-space: nowrap;
+}
+.tag.ok { background: var(--ok-soft); color: var(--ok); border-color: currentColor; }
+.tag.warn { background: var(--warn-soft); color: var(--warn); border-color: currentColor; }
+.tag.crit { background: var(--crit-soft); color: var(--crit); border-color: currentColor; }
+.tag.dim { background: var(--surface-2); color: var(--ink-3); border-color: var(--hair-cool); }
+.tag.accent { background: var(--gold-soft); color: var(--gold-ink); border-color: var(--hair-2); }
+
+/* ---------- plain-language terms ---------- */
+/* A technical identifier beside its plain-language label: the column name,
+   metric key or model ref the label stands for. Small, mono, muted, so the
+   plain term leads and the id is there for anyone who needs to grep for it.
+   It resets case and tracking because it also appears inside uppercase
+   table headers and KPI captions. */
+.tid {
+  display: inline-block; position: relative; vertical-align: middle;
+  margin-left: 6px; line-height: 0; text-transform: none; letter-spacing: 0;
+}
+.ibtn {
+  position: relative; width: 16px; height: 16px; padding: 0; border-radius: 50%;
+  border: 1px solid var(--hair-2); background: transparent; color: var(--ink-3);
+  font: 600 10px/14px var(--mono); text-transform: none; letter-spacing: 0;
+  cursor: pointer; vertical-align: middle;
+}
+.ibtn::before { content: ""; position: absolute; inset: -10px; }   /* 36px hit area */
+.ibtn:hover, .ibtn:focus-visible, .tid.open .ibtn {
+  color: var(--gold-ink); border-color: var(--gold); outline: none;
+}
+.tid .tip {
+  display: none; position: absolute; left: 0; top: 22px; z-index: 40;
+  width: max-content; max-width: min(300px, calc(100vw - 32px));
+  padding: 8px 10px; border-radius: 8px; text-align: left; white-space: normal;
+  background: var(--ground-2); border: 1px solid var(--hair-2); box-shadow: var(--shadow);
+  color: var(--ink-2); font: 400 12px/1.45 var(--sans); text-transform: none; letter-spacing: 0;
+}
+.tid .tip code {
+  display: block; margin-bottom: 4px; font: 11px/1.4 var(--mono); color: var(--ink);
+  font-variant-ligatures: none;
+}
+.tid:hover .tip, .tid:focus-within .tip, .tid.open .tip { display: block; }
+.tid .tip b { display: block; color: var(--ink); margin-bottom: 4px; font-weight: 600; }
+.tid .tip ul.tiplist { margin: 4px 0 6px; padding-left: 16px; }
+.tid .tip ul.tiplist li { margin: 2px 0; }
+.tid .tip .note { display: block; font-size: 11.5px; color: var(--ink-3); }
+th .tid, .kpi .tid { margin-left: 5px; }
+/* The plain term itself. When it carries a title (the one-line reason the
+   number matters) a dotted rule says there is something to hover for. */
+.plainterm, .term { display: inline; }
+.plainterm[title], .term[title] {
+  cursor: help; text-decoration: underline dotted;
+  text-decoration-color: var(--hair-2); text-underline-offset: 3px;
+}
+
+/* ---------- messages ---------- */
+.msg { border-radius: var(--r-sm); padding: var(--sp-3) var(--sp-4); font-size: 13px; margin: var(--sp-3) 0;
+  border: 1px solid transparent; }
+.msg.ok { background: var(--ok-soft); color: var(--ok); border-color: currentColor; }
+.msg.warn { background: var(--warn-soft); color: var(--warn); border-color: currentColor; }
+.msg.crit { background: var(--crit-soft); color: var(--crit); border-color: currentColor; }
+.msg.info { background: var(--gold-soft); color: var(--gold-ink); border-color: var(--hair-2); }
+.note { color: var(--ink-3); font-size: 12.5px; margin: var(--sp-2) 0 0; }
+pre.out { margin: 0; white-space: pre-wrap; font-family: var(--mono); font-size: 12.5px;
+  color: var(--ink-2); }
+
+/* ---------- key/value ---------- */
+.kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--sp-3) var(--sp-6); }
+.kv > div { display: flex; justify-content: space-between; gap: var(--sp-3);
+  border-bottom: 1px solid var(--hair-cool); padding-bottom: var(--sp-2); }
+.kv dt {
+  color: var(--ink-3); font: 10px/1.6 var(--mono); letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.kv dd { margin: 0; font-family: var(--mono); font-size: 12.5px; text-align: right; word-break: break-all; }
+
+/* ---------- misc ---------- */
+.bar { height: 6px; border-radius: 99px; background: var(--surface-2); overflow: hidden; margin: var(--sp-3) 0 var(--sp-2); }
+.bar > i { display: block; height: 100%; background: var(--gold); border-radius: 99px;
+  transition: width .25s ease; }
+
+.chain { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
+.link { font-family: var(--mono); font-size: 12px; background: var(--surface-2);
+  border: 1px solid var(--hair); border-radius: var(--r-sm); padding: var(--sp-2) var(--sp-3); color: var(--ink-2); }
+.link.hit { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); font-weight: 600; }
+.arrow { color: var(--gold-ink); }
+
+/* Two steps of sp-6 above and below: an empty state is deliberately roomy so
+   it reads as a resting place rather than a broken card. */
+.empty { text-align: center; padding: calc(var(--sp-6) * 2) var(--sp-5); color: var(--ink-3);
+  border: 1px dashed var(--hair-2); border-radius: var(--r); }
+.empty b {
+  display: block; color: var(--ink-2); font-family: var(--serif);
+  font-size: 19px; letter-spacing: -.02em; margin-bottom: var(--sp-2);
+}
+
+.spin { display: inline-block; width: 11px; height: 11px; border: 2px solid var(--hair-2);
+  border-top-color: var(--gold); border-radius: 50%; animation: sp .7s linear infinite;
+  vertical-align: -1px; margin-right: var(--sp-2); }
+@keyframes sp { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .spin { animation: none; }
+  .bar > i { transition: none; }
+}
+
+/* A figure is a titled object inside a card, so it carries no margin of its
+   own; the card's padding and the sibling rhythm place it. Chart captions
+   join the serif family so a figure reads as a titled object rather than as
+   a stray block of UI text. */
+figure { margin: 0; }
+figcaption {
+  font-family: var(--serif); font-size: 16px; font-weight: 600;
+  letter-spacing: -.02em; margin-bottom: var(--sp-1);
+}
+/* The small mono label a chart card puts above the figure's own caption. */
+.chartlabel {
+  font: 10px/1.4 var(--mono); letter-spacing: .12em; text-transform: uppercase;
+  color: var(--ink-3); margin: 0 0 var(--sp-2);
+}
+
+/* ---------- Guide and About ---------- */
+
+/* The one paragraph on the page set at reading size. Everything else on a
+   dense instrument is 12 to 13px; the thesis earns bigger type. */
+.lead {
+  font-size: 15.5px; line-height: 1.68; color: var(--ink-2);
+  margin: 0;
+}
+
+/* A numbered step in the walkthrough. */
+.step {
+  display: flex; gap: var(--sp-4); align-items: flex-start;
+  padding: var(--sp-4) 0; border-top: 1px solid var(--hair);
+}
+.step:first-of-type { border-top: 0; padding-top: var(--sp-1); }
+.stepn {
+  flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%;
+  display: grid; place-items: center;
+  border: 1px solid var(--hair-2); background: var(--gold-soft);
+  color: var(--gold-ink); font: 600 11.5px/1 var(--mono);
+}
+.stepbody { min-width: 0; flex: 1 1 auto; }
+.stepbody b { font-size: 13.5px; display: block; margin-bottom: var(--sp-1); }
+.stepbody p { color: var(--ink-3); font-size: 12.5px; margin: 0 0 var(--sp-2); }
+
+/* One of the four failure modes: the problem in muted ink, the answer set
+   off by a gold rule so the eye can find "what is done about it". */
+.failcard {
+  border: 1px solid var(--hair); border-radius: var(--r-sm);
+  padding: var(--sp-4); background: var(--surface);
+}
+.failhead {
+  font-family: var(--serif); font-size: 16px; font-weight: 600;
+  letter-spacing: -.02em; margin-bottom: var(--sp-2);
+}
+.fix {
+  color: var(--ink-2); font-size: 12.5px; margin: var(--sp-3) 0 0;
+  padding-left: var(--sp-3); border-left: 2px solid var(--gold);
+}
+
+.screencard { border-left: 2px solid var(--hair-2); padding-left: var(--sp-3); }
+.screencard b { font-size: 13px; display: block; margin-bottom: var(--sp-1); }
+
+.plain { margin: 0; padding-left: var(--sp-4); color: var(--ink-2); font-size: 13px; }
+.refuse { list-style: none; padding-left: 0; }
+.refuse li {
+  padding: var(--sp-2) 0 var(--sp-2) var(--sp-5); border-bottom: 1px solid var(--hair);
+  position: relative; color: var(--ink-2); font-size: 13px;
+}
+.refuse li:last-child { border-bottom: 0; }
+/* A refusal reads as a stop, so the marker is a stop, not a bullet and not a
+   tick, which would read as "feature present". */
+.refuse li::before {
+  content: "✕"; position: absolute; left: var(--sp-1); top: var(--sp-2);
+  color: var(--crit); font-size: 11px;
+}
+
+/* ===========================================================================
+   Glass and motion.
+
+   Surfaces become translucent panes over the graph-paper ground: a blur, a
+   faint inner highlight along the top edge, and a border that catches light
+   on one side. Motion is short, eased, and only ever on entry and hover. An
+   instrument that keeps moving is an instrument you cannot read. Every
+   animation and transition here is switched off under prefers-reduced-motion,
+   including the slow drift of the ground glow.
+
+   Tokens for the pane itself live on :root so the light theme can define its
+   own (a light pane is more opaque; blur over warm paper needs less lift).
+   =========================================================================== */
+:root {
+  --pane: linear-gradient(160deg, rgba(255, 255, 255, .055), rgba(255, 255, 255, .018));
+  --pane-2: linear-gradient(160deg, rgba(255, 255, 255, .085), rgba(255, 255, 255, .03));
+  --pane-edge: rgba(255, 255, 255, .07);
+  --pane-hi: rgba(255, 255, 255, .10);
+  --pane-blur: 18px;
+  --lift: 0 36px 90px -30px rgba(3, 8, 24, .9), 0 10px 26px -14px rgba(3, 8, 24, .7);
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+  --t-fast: 160ms;
+  --t-base: 280ms;
+}
+:root[data-theme="light"] {
+  --pane: linear-gradient(160deg, rgba(255, 255, 255, .78), rgba(255, 255, 255, .58));
+  --pane-2: linear-gradient(160deg, rgba(255, 255, 255, .92), rgba(255, 255, 255, .74));
+  --pane-edge: rgba(11, 20, 48, .08);
+  --pane-hi: rgba(255, 255, 255, .9);
+  --lift: 0 30px 70px -34px rgba(11, 20, 48, .35), 0 8px 22px -14px rgba(11, 20, 48, .18);
+}
+
+/* No ground glow: the page is one shade throughout (see body). */
+
+/* ---------- panes ---------- */
+.card, .kpi, .failcard, .empty, .tw {
+  background: var(--pane);
+  border-color: var(--pane-edge);
+  backdrop-filter: blur(var(--pane-blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--pane-blur)) saturate(140%);
+  box-shadow: var(--shadow), inset 0 1px 0 var(--pane-hi);
+  transition: transform var(--t-base) var(--ease-out),
+              box-shadow var(--t-base) var(--ease-out),
+              border-color var(--t-base) var(--ease-out);
+}
+.kpi { background: var(--pane-2); }
+.card:hover, .failcard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--lift), inset 0 1px 0 var(--pane-hi);
+  border-color: var(--hair-2);
+}
+.kpi:hover { transform: translateY(-2px); box-shadow: var(--lift), inset 0 1px 0 var(--pane-hi); }
+
+/* The task bar is the one pane that must read as solid enough to hold the
+   page still while content scrolls beneath it. */
+.topbar {
+  background: color-mix(in srgb, var(--ground) 72%, transparent);
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  box-shadow: 0 1px 0 var(--pane-hi) inset, 0 18px 40px -30px rgba(3, 8, 24, .8);
+}
+:root[data-theme="light"] .topbar {
+  background: color-mix(in srgb, var(--ground) 78%, transparent);
+  box-shadow: 0 1px 0 var(--pane-hi) inset, 0 18px 40px -34px rgba(11, 20, 48, .3);
+}
+
+/* ---------- entry ---------- */
+main { animation: rise var(--t-base) var(--ease-out) both; }
+main > * > .card, main > * > .kpis, main > * > figure, main > * > .head, main > * > .grid2 {
+  animation: rise 420ms var(--ease-out) both;
+}
+main > * > :nth-child(1) { animation-delay: 0ms; }
+main > * > :nth-child(2) { animation-delay: 40ms; }
+main > * > :nth-child(3) { animation-delay: 80ms; }
+main > * > :nth-child(4) { animation-delay: 120ms; }
+main > * > :nth-child(5) { animation-delay: 160ms; }
+main > * > :nth-child(6) { animation-delay: 200ms; }
+main > * > :nth-child(7) { animation-delay: 240ms; }
+main > * > :nth-child(n+8) { animation-delay: 280ms; }
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+.kpi .v { animation: pop 520ms var(--ease-out) both; }
+@keyframes pop { from { opacity: 0; transform: translateY(6px) scale(.98); } }
+
+/* ---------- controls ---------- */
+.btn, .btn.ghost, .pick, .tab, .subtab, .iconbtn, .navbtn {
+  transition: background-color var(--t-fast) ease, color var(--t-fast) ease,
+              border-color var(--t-fast) ease, transform var(--t-fast) var(--ease-out),
+              box-shadow var(--t-fast) ease, filter var(--t-fast) ease;
+}
+.btn:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 10px 24px -12px rgba(201, 160, 40, .7); }
+.btn:not(:disabled):active { transform: translateY(0) scale(.985); box-shadow: none; }
+.pick:hover, .subtab:hover, .tab:hover { transform: translateY(-1px); }
+.pick[aria-pressed="true"] { box-shadow: 0 8px 20px -12px rgba(201, 160, 40, .8); }
+.tab[aria-current="true"]::after { transition: left var(--t-base) var(--ease-out), right var(--t-base) var(--ease-out); }
+
+select, input[type=number], input[type=text], input[type=password], textarea {
+  background: var(--pane);
+  backdrop-filter: blur(var(--pane-blur));
+  transition: border-color var(--t-fast) ease, box-shadow var(--t-fast) ease;
+}
+select:focus, input:focus, textarea:focus {
+  outline: none; border-color: var(--gold);
+  box-shadow: 0 0 0 3px var(--gold-soft);
+}
+
+tbody tr td { transition: background-color var(--t-fast) ease; }
+.msg { animation: rise 320ms var(--ease-out) both; }
+.bar > i { transition: width 420ms var(--ease-out); }
+figure svg { animation: rise 460ms var(--ease-out) both; }
+/* A chart is drawn at a fixed viewBox and scaled to its container. On a wide
+   card that scales the text too, so labels and numbers double in size; the
+   scale is therefore capped. The chart grows to a readable width and stops. */
+figure svg { max-width: 900px; height: auto; }
+
+/* Tooltip: a small pane too. Its padding is set by charts.js, which owns the
+   element. */
+.tip {
+  background: var(--pane-2) !important;
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid var(--pane-edge) !important;
+  box-shadow: var(--lift) !important;
+}
+
+/* ---------- attempts timeline ---------- */
+.timeline { position: relative; padding-left: var(--sp-5); }
+.timeline::before {
+  content: ""; position: absolute; left: var(--sp-2); top: var(--sp-2); bottom: var(--sp-2); width: 1px;
+  background: linear-gradient(180deg, var(--hair-2), transparent);
+}
+.attempt {
+  position: relative; display: grid; grid-template-columns: 1fr auto;
+  gap: var(--sp-2) var(--sp-4); align-items: start; padding: var(--sp-4); margin-bottom: var(--sp-3);
+  border: 1px solid var(--pane-edge); border-radius: var(--r-sm);
+  background: var(--pane); backdrop-filter: blur(var(--pane-blur));
+  -webkit-backdrop-filter: blur(var(--pane-blur));
+  transition: transform var(--t-base) var(--ease-out), box-shadow var(--t-base) var(--ease-out);
+  animation: rise 420ms var(--ease-out) both;
+}
+.attempt:hover { transform: translateX(3px); box-shadow: var(--lift); }
+/* The 9px dot is centred on the timeline's line (sp-2 in from the edge, so
+   sp-1 - sp-5 from the card) and on the first line of .when (the card's
+   sp-4 padding plus half a 15px line, less half the dot). */
+.attempt::before {
+  content: ""; position: absolute; left: calc(var(--sp-1) - var(--sp-5));
+  top: calc(var(--sp-4) + var(--sp-1)); width: 9px; height: 9px;
+  border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 3px var(--gold-soft);
+}
+.attempt.profile::before { background: var(--ok); box-shadow: 0 0 0 3px var(--ok-soft); }
+.attempt .when { font: 10.5px/1.5 var(--mono); color: var(--ink-3); letter-spacing: .04em; }
+.attempt .what { font-family: var(--serif); font-size: 15.5px; letter-spacing: -.015em; }
+.attempt .who { font: 11.5px/1.6 var(--mono); color: var(--ink-2); word-break: break-word; }
+.attempt .facts { display: flex; gap: var(--sp-3); flex-wrap: wrap; font: 11px/1.6 var(--mono); color: var(--ink-3); }
+.attempt .facts b { color: var(--ink); font-weight: 600; }
+
+/* ---------- reduced motion: everything still ---------- */
+@media (prefers-reduced-motion: reduce) {
+  body::before { animation: none; }
+  main, main > * > *, .kpi .v, .msg, figure svg, .attempt { animation: none !important; }
+  .card, .kpi, .failcard, .attempt, .btn, .pick, .tab, .subtab, .iconbtn,
+  select, input, textarea, tbody tr td, .bar > i { transition: none !important; }
+  .card:hover, .kpi:hover, .failcard:hover, .attempt:hover,
+  .btn:not(:disabled):hover, .pick:hover, .subtab:hover, .tab:hover { transform: none; }
+}
+
+/* Cross-fade between screens where the View Transitions API exists. */
+::view-transition-old(root) { animation: 160ms ease-out both vt-out; }
+::view-transition-new(root) { animation: 240ms var(--ease-out) both vt-in; }
+@keyframes vt-out { to { opacity: 0; } }
+@keyframes vt-in { from { opacity: 0; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+}
+
+/* Text runs the full width of its card (no measure cap): asked for by the
+   user, who found the capped column left the right half of every card empty. */
+/* ---- Evaluate (start here) --------------------------------------------- */
+.evpicks { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--sp-3); }
+.evpick {
+  text-align: left; padding: var(--sp-4); border-radius: var(--r); cursor: pointer;
+  background: var(--surface); border: 1px solid var(--hair); color: var(--ink-2);
+  display: flex; flex-direction: column; gap: 6px; min-height: 44px; font: inherit;
+}
+.evpick b { color: var(--ink); font-size: 14px; }
+.evpick span { font-size: 12.5px; line-height: 1.5; color: var(--ink-3); }
+.evpick:hover { border-color: var(--hair-2); }
+.evpick[aria-pressed="true"] { border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); }
+.evpick[aria-pressed="true"] b { color: var(--gold-ink); }
+.evcode pre.out { margin: 0; max-height: 420px; overflow: auto; white-space: pre; }
+.evform label { display: block; }
+.chk { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-2); cursor: pointer; }
+.chk input { width: 16px; height: 16px; }
+@media (max-width: 820px) { .evform.grid2 { grid-template-columns: 1fr; } }
+
+/* ---- Case studies ------------------------------------------------------ */
+.cs-tags { margin-top: var(--sp-3); }
+.cs-tags .pill {
+  display: inline-block; padding: 4px 10px; border-radius: 999px;
+  font-size: 12px; line-height: 18px; color: var(--ink-2);
+  background: var(--glass-2, transparent); border: 1px solid var(--hair-2);
+}
+.cs-h { font-size: 15px; margin: var(--sp-5) 0 var(--sp-2); color: var(--ink); }
+.cs-h:first-of-type { margin-top: var(--sp-3); }
+.cs-p { margin: 0 0 var(--sp-3); line-height: 1.55; }
+.cs-ul { margin: 0 0 var(--sp-3); padding-left: 20px; color: var(--ink-2); line-height: 1.55; }
+.cs-ul li { margin: 4px 0; }
+.cs-table { border-collapse: collapse; font-size: 13px; margin: 0 0 var(--sp-3); }
+.cs-table th, .cs-table td { text-align: left; padding: 6px 12px 6px 0; border-bottom: 1px solid var(--hair-2); vertical-align: top; }
+.cs-table th { color: var(--ink-3); font-weight: 600; }
+.cs-results { margin-top: var(--sp-3); }
+.tablewrap { overflow-x: auto; max-width: 100%; }

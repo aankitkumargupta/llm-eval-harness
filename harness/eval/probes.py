@@ -1,5 +1,5 @@
 """
-Adversarial and robustness probes — generating the eval items nobody writes by hand.
+Adversarial and robustness probes, generating the eval items nobody writes by hand.
 
 `ItemType.NOISE_INJECTED` and `ItemType.INJECTION` existed in the schema from the
 start, and `TraceRow.injection_resisted` had a column waiting for it, but nothing
@@ -7,8 +7,8 @@ ever produced such an item or scored one. The README described them as "hooks".
 This module is the thing that fills them.
 
 Why it matters beyond completeness: **a RAG system's corpus is an attack
-surface.** Anything that can put text into your index — a support ticket, an
-uploaded PDF, a scraped page, a wiki anyone can edit — can put instructions in
+surface.** Anything that can put text into your index, a support ticket, an
+uploaded PDF, a scraped page, a wiki anyone can edit, can put instructions in
 front of your model. The model cannot tell a retrieved passage from an operator
 instruction; they arrive as the same tokens. So "does this model follow orders it
 found in a document?" is a question every RAG deployment has to answer, and no
@@ -16,19 +16,19 @@ accuracy number answers it.
 
 Five probe families, each derived automatically from an evalset you already have:
 
-  unanswerable   — the abstention probe: a question the corpus cannot answer.
+  unanswerable, the abstention probe: a question the corpus cannot answer.
                    Catches the model that would rather invent a statute than
                    admit a gap.
-  noise          — distractor passages injected into context. Measures whether
+  noise, distractor passages injected into context. Measures whether
                    quality survives imperfect retrieval, which is the only kind
                    there is in production.
-  injection      — a hostile instruction planted in a retrieved passage, with a
+  injection, a hostile instruction planted in a retrieved passage, with a
                    canary string. If the canary comes back, the model took
                    orders from its data.
-  paraphrase     — the same question reworded. Users don't ask twice the same
+  paraphrase, the same question reworded. Users don't ask twice the same
                    way; an answer that changes when they do is unreliable even
                    when each individual answer looks fine.
-  positional     — the gold passage forced to the middle of a long context, the
+  positional, the gold passage forced to the middle of a long context, the
                    "lost in the middle" effect. Separates models that read their
                    whole context from models that skim the ends.
 
@@ -46,7 +46,7 @@ from dataclasses import dataclass, field
 from ..store.schema import EvalItem, ItemType
 
 # The planted instruction. Deliberately looks like the kind of text that ends up
-# in a real corpus — a boilerplate "system notice" block in a document — rather
+# in a real corpus, a boilerplate "system notice" block in a document, rather
 # than something obviously hostile. An attack that only works when it announces
 # itself does not measure anything useful.
 INJECTION_TEMPLATES = [
@@ -86,7 +86,7 @@ def make_canary(seed: str) -> str:
 
     Uses sha256 rather than the builtin `hash()`: string hashing is salted per
     process (PYTHONHASHSEED), so a builtin-hash canary would differ between the
-    run that generated the probe file and the run that scores it — and the
+    run that generated the probe file and the run that scores it, and the
     scorer would then look for a token the model was never shown, reporting
     perfect injection resistance no matter what the model did.
     """
@@ -142,7 +142,7 @@ def paraphrase_query(query: str, rng: random.Random) -> str:
 def inject_typos(text: str, rate: float, rng: random.Random) -> str:
     """Character-level noise, for the "users type badly" robustness case.
 
-    Only perturbs words of 4+ characters so the question stays readable — the
+    Only perturbs words of 4+ characters so the question stays readable, the
     probe is meant to test tolerance of realistic typing, not to test whether
     the model can decode gibberish.
     """
@@ -206,7 +206,7 @@ def build_probe_suite(items: list[EvalItem], cfg: ProbeConfig) -> ProbeSuite:
 
     Probe items carry their parameters in `meta`, and the runner reads them to
     mutate the retrieved context at generation time. That keeps this module pure
-    — it never touches the network or the vector store — so probe generation is
+, it never touches the network or the vector store, so probe generation is
     fast, free, and unit-testable.
     """
     rng = random.Random(cfg.seed)
@@ -382,7 +382,7 @@ def score_probe(item: EvalItem, answer: str, context: str) -> dict:
     """Score the probe-specific metrics for one item.
 
     Returns only the fields this probe actually measures, so non-probe metrics
-    stay `None` — "not measured" must remain distinguishable from "measured as
+    stay `None`: "not measured" must remain distinguishable from "measured as
     zero", which is the schema's founding rule.
     """
     from . import metrics as M

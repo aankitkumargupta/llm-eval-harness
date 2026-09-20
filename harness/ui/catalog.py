@@ -2,7 +2,7 @@
 What this installation can actually do, discovered from the code.
 
 The Overview screen needs a list of the platform's capabilities. The obvious
-way to build one is to type it out — and that list starts lying the first time
+way to build one is to type it out, and that list starts lying the first time
 someone adds a provider, renames a metric or removes a pass. A feature page that
 disagrees with the software is worse than no feature page, because people act on
 it.
@@ -16,12 +16,12 @@ sync.
 
 Two kinds of fact are returned:
 
-  **Capability** — what the code can do. Static across installs.
-  **Status**     — what *this* install has: which keys resolve, which profiles
+  **Capability**, what the code can do. Static across installs.
+  **Status**, what *this* install has: which keys resolve, which profiles
                    exist, what is in the trace store. Varies per machine.
 
-Prose that genuinely needs a human — why a metric matters, what a probe catches
-— is kept to one short line per item, attached to the discovered name rather
+Prose that genuinely needs a human, why a metric matters, what a probe catches
+, is kept to one short line per item, attached to the discovered name rather
 than replacing it. If a name has no description the item still renders; only
 the sentence is missing.
 """
@@ -42,11 +42,11 @@ METRIC_NOTES: dict[str, str] = {
     "mrr": "How high the first gold passage ranked.",
     "ndcg_at_k": "Ranking quality, rewarding gold placed high.",
     "context_recall": "Share of all gold passages retrieved.",
-    "context_precision": "Share of retrieved passages that are gold — the "
+    "context_precision": "Share of retrieved passages that are gold, the "
                          "counterweight that stops k growing forever.",
     "average_precision": "Rewards ranking *all* the gold high, not just the first.",
     "rerank_hit_delta": "What reranking added to hit-rate.",
-    "rerank_mrr_delta": "What reranking added to rank — usually the real gain.",
+    "rerank_mrr_delta": "What reranking added to rank, usually the real gain.",
     "accuracy": "Correct vs the gold answer, by the profile's scorer.",
     "faithfulness": "Grounded in the retrieved context, inventing nothing.",
     "answer_relevance": "Actually addresses the question asked.",
@@ -56,7 +56,7 @@ METRIC_NOTES: dict[str, str] = {
                           "ambiguous, not that the model failed.",
     "citation_valid_pointer": "Cited ids point at real retrieved passages.",
     "citation_supporting": "Cited passages actually support the claim.",
-    "citation_density": "Citations per sentence — catches the model that games "
+    "citation_density": "Citations per sentence, catches the model that games "
                         "pointer-validity by never citing.",
     "citation_recall": "Share of gold passages the answer cited.",
     "abstention": "Refuses when it should, answers when it should.",
@@ -65,7 +65,7 @@ METRIC_NOTES: dict[str, str] = {
     "pii_leaked": "Emitted PII that was not in the retrieved context.",
     "cost_usd": "End-to-end spend: generation + judge + embedding + rerank.",
     "latency_ms": "Wall clock, measured in the low-concurrency lane.",
-    "ttft_ms": "Time to first token — what governs perceived responsiveness.",
+    "ttft_ms": "Time to first token, what governs perceived responsiveness.",
     "prompt_tokens": "Input tokens, from the provider's usage block.",
     "completion_tokens": "Output tokens, from the provider's usage block.",
 }
@@ -91,9 +91,9 @@ PROBE_NOTES: dict[str, str] = {
                  "a canary. If the canary comes back, the model took orders "
                  "from its data.",
     "noise": "Distractor passages mixed into context. Does quality survive "
-             "imperfect retrieval — the only kind there is in production?",
+             "imperfect retrieval, the only kind there is in production?",
     "paraphrase": "The same question reworded. Users don't ask twice the same way.",
-    "positional": "Gold forced to the middle of a long context — the "
+    "positional": "Gold forced to the middle of a long context, the "
                   "'lost in the middle' effect.",
 }
 
@@ -129,7 +129,7 @@ ANALYSIS: list[tuple[str, str, str]] = [
      "Cheapest model clearing your bar, projected spend at your volume, and the "
      "price of each extra quality point."),
     ("Regression gate", "gate",
-     "Exits non-zero when a guarded metric regresses — and only when the drop "
+     "Exits non-zero when a guarded metric regresses, and only when the drop "
      "is statistically real."),
     ("Elo / head-to-head", "arena",
      "Position-bias-corrected pairwise ranking, for when rubric scores saturate."),
@@ -139,7 +139,7 @@ ANALYSIS: list[tuple[str, str, str]] = [
     ("Judge calibration", "report",
      "Cohen's kappa against human labels. Every judge-scored number rests on it."),
     ("Error attribution", "report",
-     "Why items failed — rate limits, context length, refusals — not just how "
+     "Why items failed, rate limits, context length, refusals, not just how "
      "many."),
     ("HTML report", "html",
      "A self-contained file you can attach to a ticket."),
@@ -149,7 +149,7 @@ RELIABILITY: list[tuple[str, str]] = [
     ("Retries with jittered backoff",
      "429s and 5xx are retried; 400s and 404s fail immediately rather than "
      "wasting minutes hiding a config bug."),
-    ("Rate limiting", "Optional token bucket per provider — pacing is cheaper "
+    ("Rate limiting", "Optional token bucket per provider, pacing is cheaper "
                       "than backing off."),
     ("Budget ceiling", "A hard USD limit. The run aborts cleanly, keeps what it "
                        "wrote, and stops issuing calls."),
@@ -188,7 +188,7 @@ class ProviderRow:
 
         Self-hosted providers carry a placeholder key the server ignores, so
         `configured` is trivially true for them. Reporting that as "ready" would
-        claim a local server is up when nothing has checked — the same kind of
+        claim a local server is up when nothing has checked, the same kind of
         overstatement the capability flags used to make. They get "no key
         needed" instead, which is the fact we actually know.
         """
@@ -371,7 +371,7 @@ def build_status(catalog: Catalog, store=None, models_cfg: dict | None = None,
         if models_cfg.get("judge_model"):
             wanted.append(models_cfg["judge_model"])
         st.unpriced = pricing.missing(wanted)
-    except Exception:  # noqa: BLE001 — the overview must render regardless
+    except Exception:  # noqa: BLE001, the overview must render regardless
         pass
 
     if store is not None:

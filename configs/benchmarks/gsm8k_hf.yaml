@@ -1,0 +1,49 @@
+# GSM8K, the real dataset, fetched from HuggingFace.
+#
+# Distinct from `gsm8k` (which points at the committed synthetic fixture) on
+# purpose: the two produce different numbers, and a single id whose meaning
+# depends on what happens to be cached is the kind of ambiguity spec_hash
+# exists to prevent.
+id: gsm8k_hf
+version: 1
+family: math
+task: direct
+
+source:
+  kind: hf
+  ref: openai/gsm8k
+  config: main            # NOT "default": GSM8K's config is named `main`
+  split: test
+  checksum: "sha256:036e4b45ebfe29de54ac7495e8ea0069aafd79da7b6cd85fc268ca445e6bb4bf"
+  licence: MIT
+  commercial_use: true
+  citation: "Cobbe et al., 2021: Training Verifiers to Solve Math Word Problems"
+
+sampling: {limit: null, seed: 1729, stratify_by: "", samples_per_item: 1}
+
+prompt:
+  template: ""
+  few_shot: {n: 0, selection: fixed, pool_split: train}
+  system: null
+  # Generous on purpose. These are reasoning models and a tight budget
+  # truncates the chain of thought, which then reads as a quality finding
+  # rather than as the config problem it is.
+  decoding: {temperature: 0.0, max_tokens: 1024, top_p: 1.0}
+
+scoring:
+  mode: generative
+  extraction:
+    chain:
+      - {kind: regex, pattern: '####\s*(-?[\d,\.]+)'}
+      - {kind: boxed}
+      - {kind: numeric}
+  metric: accuracy
+  chance_level: 0.0       # open-ended numeric: guessing wins nothing
+  aggregate: [mean]
+
+reporting:
+  primary_metric: accuracy
+  also: [extraction_failure_rate, refusal_rate, truncation_rate, cost_usd,
+         cost_per_correct_answer, latency_p95_ms]
+
+contamination: {canary: false, ngram_overlap_against: null, perturbations: [numeral_change]}

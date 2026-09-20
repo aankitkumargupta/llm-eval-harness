@@ -1,0 +1,67 @@
+name: in_notice_translation
+description: >
+  Translating English public notices and office memoranda into Hindi, the
+  everyday bilingual-publication duty of state and municipal offices. Forty-eight
+  fictional notices (water cuts, exam schedules, tax deadlines, camps,
+  tenders, transfer orders, hearings), each with a plain-official-Hindi
+  reference. Two things are scored and kept apart: whether the translation
+  says what the notice says (judge, against the reference) and whether it is
+  actually in Devanagari (native_script_ratio). A fluent answer that stays
+  in English has not done the job, however well the judge likes it.
+
+task: direct
+evalset_path: data/in_notice_translation/evalset.jsonl
+corpus_path: ""
+embedding_model: ""
+
+# The judge scores accuracy against the Hindi reference. Exact match would
+# be meaningless: many Hindi renderings of one notice are equally right.
+accuracy_scorer: judge
+# Script the answer must be in; drives native_script_ratio.
+target_script: devanagari
+
+# A notice is 30 to 130 English words; Hindi runs longer in tokens.
+# The BASELINE system prompt: the task instruction itself. The knobs'
+# system_prompts below are candidates for the adapted pass only and never
+# reach the baseline; without this the models were asked to "answer the
+# question" and summarised the notice instead of translating it.
+system_prompt: >-
+  You translate official notices for a government office in India from English into Hindi. Write the Hindi in Devanagari script, in the plain official register such notices use. Keep every date, time, amount, place name and phone number exactly as given. Output only the Hindi translation, nothing else.
+
+max_tokens: 2048         # Hindi runs long in tokens, and the models think first
+temperature: 0.0
+
+active_metrics:
+  - accuracy
+  - native_script_ratio
+  - cost_usd
+  - latency_ms
+
+# Fidelity carries most of the weight, script the next share; cost is
+# negative by rule (I4). Latency is measured but not weighted: a notice is
+# translated once, not answered live.
+metric_weights:
+  accuracy: 0.60
+  native_script_ratio: 0.25
+  cost_usd: -0.15
+
+probes:
+  enabled: false           # no retrieved context to poison
+  unanswerable: 0.0
+  injection: 0.0
+  noise: 0.0
+  paraphrase: 0.0
+  positional: 0.0
+
+tuning_budget: 8
+
+knobs:
+  retrieval_modes: [dense]
+  k_values: [1]
+  rerank_options: [false]
+  rerank_top_n: [1]
+  system_prompts:
+    - "You translate official notices for a government office in India from English into Hindi. Write the Hindi in Devanagari script, in the plain official register such notices use. Keep every date, time, amount, place name and phone number exactly as given. Output only the Hindi translation, nothing else."
+    - "Translate the following public notice into Hindi (Devanagari). Preserve all numbers, dates and names. Reply with the translation only."
+  few_shot_sets:
+    - []

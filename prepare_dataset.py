@@ -52,7 +52,7 @@ def extract_pdf_text(pdf_path: Path, granularity: str) -> list[tuple[str, str]]:
     granularity="document" -> one record for the whole PDF (simplest)
 
     Uses pdfplumber (layout-aware). If a page yields no text, the PDF is likely
-    scanned — this prints a warning so you know to OCR it separately rather than
+    scanned, this prints a warning so you know to OCR it separately rather than
     silently indexing empty documents.
     """
     import pdfplumber

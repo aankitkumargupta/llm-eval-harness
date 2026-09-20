@@ -1,0 +1,73 @@
+name: in_grievance_triage
+description: >
+  Routing citizen grievances to the department that acts first, in the shape
+  they arrive on public portals and helplines: short, first-person, in
+  English, Hindi or Hinglish, sometimes ambiguous. Ninety-six fictional
+  grievances across eleven departments. The question this answers is not
+  "which model is smartest" but "which model routes correctly, at what cost,
+  and how fast", because a mis-routed grievance is one that waits weeks in
+  the wrong queue.
+
+task: classify
+evalset_path: data/in_grievance_triage/evalset.jsonl
+corpus_path: ""
+embedding_model: ""
+
+label_set:
+  - water_supply
+  - electricity
+  - roads_and_transport
+  - sanitation
+  - ration_and_pds
+  - pension_and_welfare
+  - land_records
+  - police_and_safety
+  - health_services
+  - education
+  - other
+
+accuracy_scorer: exact   # the label parser scores classify profiles
+# The BASELINE system prompt: the task instruction itself. The knobs'
+# system_prompts below are candidates for the adapted pass only and never
+# reach the baseline; without this the models get only the generic task
+# default and are never told what this particular job is.
+system_prompt: >-
+  You route citizen grievances for a district administration in India. The grievance may be in English, Hindi or a mix. Reply with exactly one department label from the allowed list, in lowercase, and nothing else.
+
+max_tokens: 1536         # one label, but every model on the account is a
+                         # reasoning model and thinks first: the first attempt
+                         # at 24 tokens truncated every answer before the label
+temperature: 0.0
+
+active_metrics:
+  - accuracy
+  - cost_usd
+  - latency_ms
+
+# Lower-is-better metrics carry negative weights (I4); the validator
+# rejects a positive weight on cost or latency at load.
+metric_weights:
+  accuracy: 0.70
+  cost_usd: -0.20
+  latency_ms: -0.10
+
+probes:
+  enabled: false           # classification has no context to poison
+  unanswerable: 0.0
+  injection: 0.0
+  noise: 0.0
+  paraphrase: 0.0
+  positional: 0.0
+
+tuning_budget: 8
+
+knobs:
+  retrieval_modes: [dense]
+  k_values: [1]
+  rerank_options: [false]
+  rerank_top_n: [1]
+  system_prompts:
+    - "You route citizen grievances for a district administration in India. The grievance may be in English, Hindi or a mix. Reply with exactly one department label from the allowed list, in lowercase, and nothing else."
+    - "Classify the citizen complaint into exactly one department. Output only the label from the allowed list; no punctuation, no explanation, no translation."
+  few_shot_sets:
+    - []

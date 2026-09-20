@@ -2,7 +2,7 @@
 Adapter for every OpenAI-shaped endpoint.
 
 One class covers Together, OpenAI itself, Groq, Fireworks, DeepInfra, OpenRouter,
-and — the interesting one — anything you host yourself: vLLM, Ollama, LM Studio,
+and, the interesting one, anything you host yourself: vLLM, Ollama, LM Studio,
 llama.cpp's server. They all speak the same wire format, so the only thing that
 varies is `base_url` and which optional features actually work.
 
@@ -25,14 +25,121 @@ import time
 import requests
 from openai import OpenAI
 
-from .base import CapabilityError, EmbedResult, GenResult, ProviderInfo
+from .base import (
+    CapabilityError,
+    EmbedResult,
+    GenResult,
+    MissingUsageError,
+    ProviderInfo,
+)
 from .cost import CostMeter
 from .endpoints import PROVIDER_ENDPOINTS
 from .resilience import RateLimiter, RetryPolicy, retry_call
 
-# The endpoint table lives in `endpoints.py` — plain data, importable
+# The endpoint table lives in `endpoints.py`, plain data, importable
 # without pulling in the openai SDK. Re-exported here so existing imports
 # of `PROVIDER_ENDPOINTS` from this module keep working.
+
+
+#: Characters per token, for the opt-in estimation path only. Deliberately
+#: crude: every model tokenises differently, so any local count disagrees with
+#: the bill. It exists to keep a run moving when a provider is known to omit
+#: usage, not to be accurate, which is exactly why every row it produces is
+#: flagged `usage_estimated=True`.
+_CHARS_PER_TOKEN = 4
+
+
+def _prompt_chars(kwargs: dict) -> str:
+    """The prompt text, for the estimation path only. Never used when the
+    provider reports usage."""
+    return "".join(str(m.get("content", "")) for m in kwargs.get("messages", []))
+
+
+def extract_usage(usage, *, provider: str, model: str,
+                  allow_estimated: bool = False,
+                  prompt_text: str = "", completion_text: str = "",
+                  fields: tuple[str, str] = ("prompt_tokens", "completion_tokens"),
+                  ) -> tuple[int, int, bool]:
+    """Read a provider's usage block. Returns (prompt, completion, estimated).
+
+    Raises `MissingUsageError` when the block or its fields are absent and
+    estimation was not opted into (I3).
+
+    The bug this replaces was `getattr(usage, "prompt_tokens", 0) or 0`, which
+    collapsed three distinct situations into the same answer:
+
+      * the provider reported 0 tokens, real, must be preserved
+      * the provider reported no `usage`, unknown, must raise
+      * the provider reported `usage=None`, unknown, must raise
+
+    Conflating them meant a missing usage block was billed as free. Because
+    cost is negatively weighted, free is not a neutral error, it promotes the
+    model. Note the `or 0` also destroyed a *genuine* zero, so the two failure
+    modes hid each other.
+    """
+    p_field, c_field = fields
+    prompt = getattr(usage, p_field, None) if usage is not None else None
+    completion = getattr(usage, c_field, None) if usage is not None else None
+
+    if prompt is None or completion is None:
+        if not allow_estimated:
+            raise MissingUsageError(
+                f"Provider '{provider}' returned no usage block for model "
+                f"'{model}' (prompt_tokens={prompt!r}, completion_tokens="
+                f"{completion!r}). Cost cannot be measured, and substituting "
+                f"zero would make this model look free and rank it higher. "
+                f"Either use a provider that reports usage, or set "
+                f"`allow_estimated_usage: true` on the profile to accept "
+                f"flagged estimates."
+            )
+        return (
+            max(1, len(prompt_text) // _CHARS_PER_TOKEN),
+            max(1, len(completion_text) // _CHARS_PER_TOKEN),
+            True,
+        )
+
+    return int(prompt), int(completion), False
+
+
+def extract_reasoning(usage, message) -> tuple[int | None, int]:
+    """Hidden reasoning, as (tokens the provider reported or None, chars of
+    reasoning text returned beside the answer).
+
+    Reasoning models spend completion tokens before the first visible
+    character, and every provider seen so far bills those inside
+    `completion_tokens`, so cost needs no correction. What is lost without
+    this is the split: a 24-token label that cost 1,000 tokens of thinking,
+    or an empty answer whose whole budget went on reasoning, reads as a
+    model quality finding unless the report can say where the tokens went
+    (I3: reasoning tokens where reported).
+
+    A count comes only from an explicit field (`completion_tokens_details.
+    reasoning_tokens`, or a top-level `reasoning_tokens`). A provider that
+    returns reasoning text but reports zero, which one does, yields None
+    (unknown), never 0: a zero beside visible reasoning is a wrong number,
+    and a wrong number is worse than a missing one.
+    """
+    tokens = None
+    if usage is not None:
+        details = getattr(usage, "completion_tokens_details", None)
+        v = getattr(details, "reasoning_tokens", None) if details is not None else None
+        if v is None:
+            v = getattr(usage, "reasoning_tokens", None)
+        if v is not None:
+            tokens = int(v)
+    text = ""
+    if message is not None:
+        extra = getattr(message, "model_extra", None) or {}
+        for attr in ("reasoning_content", "reasoning"):
+            val = getattr(message, attr, None)
+            if val is None:
+                val = extra.get(attr)
+            if val:
+                text = str(val)
+                break
+    if tokens == 0 and text:
+        tokens = None
+    return tokens, len(text)
 
 
 class OpenAICompatibleClient:
@@ -50,9 +157,14 @@ class OpenAICompatibleClient:
         pricing=None,
         stream_for_ttft: bool = False,
         extra_headers: dict | None = None,
+        allow_estimated_usage: bool = False,
     ):
         spec = PROVIDER_ENDPOINTS.get(provider, {})
         self.provider = provider
+        # Off by default: an unmeasurable cost is a hard failure, because a
+        # silently-zero cost promotes the model in a negatively-weighted
+        # composite. Opt in per profile when a provider is known to omit usage.
+        self.allow_estimated_usage = allow_estimated_usage
         self.timeout = timeout
         self.retry_policy = retry or RetryPolicy()
         self.limiter = RateLimiter(rate_limit)
@@ -86,7 +198,7 @@ class OpenAICompatibleClient:
             extra={"local": bool(spec.get("local", False))},
         )
 
-        # `max_retries=0` because our own retry_call owns backoff — leaving the
+        # `max_retries=0` because our own retry_call owns backoff, leaving the
         # SDK's retries on too would multiply the attempts and the wait.
         self._client = OpenAI(
             api_key=self.api_key, base_url=resolved_base, timeout=timeout,
@@ -129,7 +241,7 @@ class OpenAICompatibleClient:
         """One chat completion, timed around the network call.
 
         Latency here is real wall-clock, so callers that report it must invoke
-        this from the low-concurrency lane — under load you would be measuring
+        this from the low-concurrency lane, under load you would be measuring
         your own queue depth, not the model.
         """
         kwargs = dict(model=model, messages=messages, temperature=temperature,
@@ -154,23 +266,38 @@ class OpenAICompatibleClient:
         resp = self._client.chat.completions.create(**kwargs)
         latency_ms = (time.perf_counter() - t0) * 1000.0
         choice = resp.choices[0]
-        usage = resp.usage
+        text = choice.message.content or ""
+        prompt_tokens, completion_tokens, estimated = extract_usage(
+            resp.usage, provider=self.provider, model=kwargs["model"],
+            allow_estimated=self.allow_estimated_usage,
+            prompt_text=_prompt_chars(kwargs), completion_text=text,
+        )
+        reasoning_tokens, reasoning_chars = extract_reasoning(resp.usage, choice.message)
         return GenResult(
-            text=choice.message.content or "",
-            prompt_tokens=getattr(usage, "prompt_tokens", 0) or 0,
-            completion_tokens=getattr(usage, "completion_tokens", 0) or 0,
+            text=text,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
             latency_ms=latency_ms,
             finish_reason=getattr(choice, "finish_reason", None),
             model=getattr(resp, "model", kwargs["model"]) or kwargs["model"],
+            usage_estimated=estimated,
+            reasoning_tokens=reasoning_tokens, reasoning_chars=reasoning_chars,
         )
 
     def _generate_streaming(self, kwargs: dict) -> GenResult:
         t0 = time.perf_counter()
         ttft_ms: float | None = None
         chunks: list[str] = []
-        prompt_tokens = completion_tokens = 0
+        # None, not 0: a stream that never carries a usage event has *unknown*
+        # token counts, and 0 would silently bill it as free (I3). The blocking
+        # path had the same defect; see `extract_usage`.
+        seen_usage = None
         finish_reason = None
         served_model = kwargs["model"]
+        # Hidden reasoning arrives as its own delta field. TTFT is measured
+        # on the first VISIBLE character on purpose: that is when a reader
+        # sees anything, and a stream of thinking is not an answer.
+        reasoning_chars = 0
 
         resp = self._client.chat.completions.create(
             **kwargs, stream=True, stream_options={"include_usage": True})
@@ -183,24 +310,40 @@ class OpenAICompatibleClient:
                     if ttft_ms is None:
                         ttft_ms = (time.perf_counter() - t0) * 1000.0
                     chunks.append(delta.content)
+                for attr in ("reasoning_content", "reasoning"):
+                    piece = getattr(delta, attr, None)
+                    if piece is None:
+                        piece = (getattr(delta, "model_extra", None) or {}).get(attr)
+                    if piece:
+                        reasoning_chars += len(str(piece))
                 if getattr(event.choices[0], "finish_reason", None):
                     finish_reason = event.choices[0].finish_reason
             usage = getattr(event, "usage", None)
             if usage:
-                prompt_tokens = getattr(usage, "prompt_tokens", 0) or 0
-                completion_tokens = getattr(usage, "completion_tokens", 0) or 0
+                seen_usage = usage
 
+        text = "".join(chunks)
+        prompt_tokens, completion_tokens, estimated = extract_usage(
+            seen_usage, provider=self.provider, model=kwargs["model"],
+            allow_estimated=self.allow_estimated_usage,
+            prompt_text=_prompt_chars(kwargs), completion_text=text,
+        )
+        reasoning_tokens, _ = extract_reasoning(seen_usage, None)
+        if reasoning_tokens == 0 and reasoning_chars:
+            reasoning_tokens = None
         return GenResult(
-            text="".join(chunks), prompt_tokens=prompt_tokens,
+            text=text, prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
             latency_ms=(time.perf_counter() - t0) * 1000.0,
             ttft_ms=ttft_ms, finish_reason=finish_reason, model=served_model,
+            usage_estimated=estimated,
+            reasoning_tokens=reasoning_tokens, reasoning_chars=reasoning_chars,
         )
 
     def judge(self, model: str, messages: list[dict], **kw) -> GenResult:
         """Generation with a fixed judge model at temperature 0.
 
-        Named separately so judge spend lands in its own bucket on the meter —
+        Named separately so judge spend lands in its own bucket on the meter.
         "the judge cost more than the models under test" is a finding you want
         to be able to read straight off the report.
         """
@@ -224,7 +367,14 @@ class OpenAICompatibleClient:
         resp = self._guarded(
             lambda: self._client.embeddings.create(model=model, input=texts))
         vectors = [d.embedding for d in resp.data]
-        tokens = getattr(resp.usage, "prompt_tokens", 0) if resp.usage else 0
+        tokens, _, estimated = extract_usage(
+            resp.usage, provider=self.provider, model=model,
+            allow_estimated=self.allow_estimated_usage,
+            prompt_text="".join(texts), completion_text="",
+            # Embeddings bill on input only; the second field is absent by
+            # design, so point both names at the one the endpoint reports.
+            fields=("prompt_tokens", "prompt_tokens"),
+        )
 
         if self.meter is not None:
             usd = 0.0
@@ -234,7 +384,8 @@ class OpenAICompatibleClient:
                 except KeyError:
                     usd = 0.0
             self.meter.record_embedding(usd, tokens)
-        return EmbedResult(vectors=vectors, prompt_tokens=tokens)
+        return EmbedResult(vectors=vectors, prompt_tokens=tokens,
+                           usage_estimated=estimated)
 
     # ------------------------------------------------------------------ #
     #  Rerank                                                             #

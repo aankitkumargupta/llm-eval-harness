@@ -23,6 +23,14 @@ Command-line entry point for the evaluation harness.
     python main.py arena    --profile regulated_qa
     python main.py html     --profile regulated_qa --out report.html
 
+    # benchmarks (CLAUDE.md section 10) - works offline with fake: models
+    python main.py bench list
+    python main.py bench run --benchmark mmlu_pro --models fake:a fake:b --limit 20
+    python main.py bench report --run-id <run_id>
+
+    # local web UI (stdlib http.server; no framework, no extra dependency)
+    python main.py serve
+
     # CI
     python main.py gate     --profile regulated_qa --baseline <run_id> \
                             --candidate <run_id> --gate accuracy:0.02
@@ -36,11 +44,14 @@ import argparse
 import io
 import random
 import sys
+import time
 import uuid
 from pathlib import Path
 
 import yaml
 
+from harness.bench.cli import add_bench_parser
+from harness.cache.cache import stable_hash
 from harness.clients.cost import CostMeter, forecast_run
 from harness.clients.pricing import PricingRegistry
 from harness.clients.registry import build_from_config
@@ -61,6 +72,7 @@ from harness.report import aggregate as A
 from harness.report import stats as S
 from harness.report.decide import Constraint, explain, headroom, project_cost, select
 from harness.report.gate import budget_gate, check_regression, parse_gate_spec
+from harness.store import manifest as MF
 from harness.store.store import TraceStore
 
 
@@ -69,7 +81,7 @@ def _utf8_stdout() -> None:
 
     Windows consoles default to cp1252, which raises UnicodeEncodeError on any
     non-ASCII character. Model names, questions and corpus text are all
-    user-supplied, so this is a matter of when, not if — and a crash while
+    user-supplied, so this is a matter of when, not if, and a crash while
     *printing a report* would discard results that already cost real money.
     """
     for stream in ("stdout", "stderr"):
@@ -348,33 +360,92 @@ def cmd_run(args):
         progress_cb=progress,
     )
 
+    # I9: a run without a manifest is not a result. Captured BEFORE the first
+    # paid call, so an aborted or crashed run still leaves a record of what it
+    # was rather than orphaned rows nobody can interpret.
+    apparatus = MF.apparatus_hash(
+        embedding_model=profile.embedding_model,
+        rerank_model=models_cfg.get("rerank_model", "") or "",
+        judge_model=models_cfg.get("judge_model", "") or "",
+        judge_ensemble=tuple(models_cfg.get("judge_ensemble") or ()),
+        embedding_provider=models_cfg.get("embedding_provider", "") or "",
+        rerank_provider=models_cfg.get("rerank_provider", "") or "",
+        judge_provider=models_cfg.get("judge_provider", "") or "",
+    )
+    manifest = MF.RunManifest.capture(
+        run_id, profile.name,
+        models=tuple(models),
+        profile_cfg_hash=stable_hash(*profile.config_hash_parts()),
+        dataset_hash=MF.dataset_hash(items),
+        apparatus_hash=apparatus,
+        embedding_model=profile.embedding_model,
+        rerank_model=models_cfg.get("rerank_model", "") or "",
+        judge_model=models_cfg.get("judge_model", "") or "",
+        judge_ensemble=tuple(models_cfg.get("judge_ensemble") or ()),
+        seeds={"split_seed": run_cfg.get("split_seed", 0),
+               "dev_split": run_cfg.get("dev_split", 0.3)},
+        pricing_as_of=getattr(pricing, "as_of", "unknown"),
+        pricing_path=str(run_cfg.get("pricing_path", "")),
+        budget_usd=float(args.budget or run_cfg.get("budget_usd", 0.0) or 0.0),
+        started_ts=time.time(),
+    )
+    manifest_dir = Path(run_cfg.get("store_path", "runs/traces")).parent / run_id
+    manifest.write(manifest_dir)
+
     print(f"[run] profile={profile.name} run_id={run_id} "
           f"models={len(models)} dev={len(dev)} test={len(test)}")
+    print(f"[run] apparatus={apparatus[:12]} "
+          f"dataset={manifest.dataset_hash[:12]} "
+          f"git={manifest.git_sha[:8]}{'-dirty' if manifest.git_dirty else ''}")
     passes = run_cfg.get("passes", {})
+    ran_passes: list[str] = []
 
     if passes.get("baseline", True):
         rep = orch.run_baseline(profile, models, test, run_id,
                                 resume_from=args.resume)
         print(f"[run] baseline: {rep.summary()}")
+        ran_passes.append("baseline")
         if rep.aborted:
+            manifest.aborted = True
+            manifest.abort_reason = "budget ceiling reached"
+            manifest.passes = tuple(ran_passes)
+            manifest.finished_ts = time.time()
+            manifest.total_cost_usd = float(meter.summary().get("total_usd", 0.0))
+            manifest.write(manifest_dir)
             return 2
 
     if passes.get("adapted", False):
         rep = orch.run_adapted(profile, models, dev, test, run_id)
         print(f"[run] adapted: {rep.summary()}")
+        ran_passes.append("adapted")
         for model, info in rep.winners.items():
             print(f"       winner {model}: {info['config']} "
                   f"(dev {info['dev_score']:.4f})")
         if rep.aborted:
+            manifest.aborted = True
+            manifest.abort_reason = "budget ceiling reached"
+            manifest.passes = tuple(ran_passes)
+            manifest.finished_ts = time.time()
+            manifest.total_cost_usd = float(meter.summary().get("total_usd", 0.0))
+            manifest.write(manifest_dir)
             return 2
 
     if passes.get("latency", False):
         lat_items = test[: run_cfg.get("latency_items", 20)]
-        rep = orch.run_latency(profile, models, lat_items, run_id)
+        rep = orch.run_latency(profile, models, lat_items, run_id,
+                               resume_from=args.resume)
         print(f"[run] latency: {rep.summary()}")
+        ran_passes.append("latency")
+
+    costs = meter.summary()
+    manifest.passes = tuple(ran_passes)
+    manifest.finished_ts = time.time()
+    manifest.total_cost_usd = float(costs.get("total_usd", 0.0))
+    manifest.write(manifest_dir)
 
     print(f"\n[run] done. run_id={run_id}")
-    print(f"[cost] {meter.summary()}")
+    print(f"[cost] {costs}")
+    print(f"[manifest] {manifest_dir / 'manifest.json'}")
     return 0
 
 
@@ -408,14 +479,16 @@ def cmd_report(args):
         print(ci.to_string(index=False))
 
     print(f"\n=== significance ({args.metric}, Holm-corrected) ===")
-    sig = S.significance_matrix(quality, metric=args.metric)
+    unpaired = "drop" if getattr(args, "allow_unpaired", False) else "raise"
+    sig = S.significance_matrix(quality, metric=args.metric,
+                                on_unpaired=unpaired)
     if not sig.empty:
         print(sig[["model_a", "model_b", "n_pairs", "diff", "p_adjusted",
                    "significant", "test"]].to_string(index=False))
         for _, r in sig.iterrows():
             print(f"  {r['model_a']} vs {r['model_b']}: {r['verdict']}")
 
-    pr = S.power_report(quality, args.metric)
+    pr = S.power_report(quality, args.metric, on_unpaired=unpaired)
     print("\n=== statistical power ===")
     print(f"  {pr.summary()}")
     if pr.suggestions:
@@ -431,6 +504,11 @@ def cmd_report(args):
     if not trunc.empty and trunc["truncated"].sum():
         print("\n=== truncated answers (max_tokens too low) ===")
         print(trunc.to_string(index=False))
+
+    est = A.estimated_usage_report(df)
+    if not est.empty:
+        print("\n=== ESTIMATED token usage (cost below is not fully measured) ===")
+        print(est.to_string(index=False))
 
     cons = A.consistency_report(df)
     if not cons.empty:
@@ -460,12 +538,16 @@ def cmd_compare(args):
         return 1
     df = df[df["pass_"].isin(["baseline", "adapted"])]
     if args.a and args.b:
-        r = S.compare_models(df, args.a, args.b, args.metric)
+        unpaired = "drop" if args.allow_unpaired else "raise"
+        r = S.compare_models(df, args.a, args.b, args.metric,
+                             on_unpaired=unpaired)
         print(f"{r.model_a} ({r.mean_a:.4f}) vs {r.model_b} ({r.mean_b:.4f})")
         print(f"  test    : {r.test} on {r.n_pairs} paired items")
         print(f"  verdict : {r.verdict()}")
         return 0
-    sig = S.significance_matrix(df, metric=args.metric)
+    sig = S.significance_matrix(
+        df, metric=args.metric,
+        on_unpaired="drop" if args.allow_unpaired else "raise")
     if sig.empty:
         print("Not enough data to compare.")
         return 1
@@ -556,7 +638,8 @@ def cmd_gate(args):
     result = check_regression(
         baseline, candidate, metrics, tolerance=args.tolerance,
         per_metric_tolerance=tolerances, floors=floors,
-        require_significance=not args.strict)
+        require_significance=not args.strict,
+        on_unpaired="drop" if args.allow_unpaired else "raise")
     print(result.report())
 
     if args.max_cost is not None:
@@ -566,6 +649,24 @@ def cmd_gate(args):
         if not cost.passed:
             return 1
     return result.exit_code()
+
+
+def cmd_serve(args):
+    """Serve the local web UI.
+
+    Thin by design: the server is presentation, so everything it shows comes
+    from the same library the CLI calls. Nothing here computes a metric.
+    """
+    from harness.web.server import serve
+
+    run_cfg = _run_cfg()
+    return serve(args.host, args.port,
+                 store_path=run_cfg.get("store_path", "runs/traces"),
+                 models_cfg=_models_cfg(),
+                 run_cfg=run_cfg,
+                 budget=args.budget,
+                 open_browser=not args.no_browser,
+                 quiet=args.quiet)
 
 
 def cmd_runs(args):
@@ -647,6 +748,11 @@ def main() -> int:
     prep.add_argument("--profile", required=True)
     prep.add_argument("--run-id", default=None)
     prep.add_argument("--metric", default="accuracy")
+    prep.add_argument("--allow-unpaired", action="store_true",
+                      help="Proceed when models were not scored on identical "
+                           "items, reporting the loss. Off by default: the "
+                           "dropped items are selected by one model's failures, "
+                           "which biases the comparison (I1).")
     prep.set_defaults(func=cmd_report)
 
     pc = sub.add_parser("compare", help="Paired significance tests between models")
@@ -655,6 +761,8 @@ def main() -> int:
     pc.add_argument("--run-id", default=None)
     pc.add_argument("-a", default=None, help="model A (omit for all pairs)")
     pc.add_argument("-b", default=None, help="model B")
+    pc.add_argument("--allow-unpaired", action="store_true",
+                    help="Compare on shared items only, reporting the loss.")
     pc.set_defaults(func=cmd_compare)
 
     pd_ = sub.add_parser("decide", help="Constraint-based model recommendation")
@@ -688,9 +796,25 @@ def main() -> int:
     pg.add_argument("--tolerance", type=float, default=0.02)
     pg.add_argument("--max-cost", type=float, default=None,
                     help="fail if mean cost per query exceeds this")
+    pg.add_argument("--allow-unpaired", action="store_true",
+                    help="Gate across runs that did not score identical items.")
     pg.add_argument("--strict", action="store_true",
                     help="fail on any regression, even one inside the noise")
     pg.set_defaults(func=cmd_gate)
+
+    add_bench_parser(sub)
+
+    pw = sub.add_parser("serve", help="Local web UI (stdlib server, no framework)")
+    pw.add_argument("--port", type=int, default=8000)
+    pw.add_argument("--host", default="127.0.0.1",
+                    help="Loopback by default: this server has no auth and can "
+                         "spend money.")
+    pw.add_argument("--budget", type=float, default=0.0,
+                    help="Hard USD ceiling applied to runs started from the UI.")
+    pw.add_argument("--no-browser", action="store_true")
+    pw.add_argument("--quiet", action="store_true",
+                    help="Suppress the per-request log; job polling is chatty.")
+    pw.set_defaults(func=cmd_serve)
 
     pru = sub.add_parser("runs", help="List recorded runs")
     pru.set_defaults(func=cmd_runs)

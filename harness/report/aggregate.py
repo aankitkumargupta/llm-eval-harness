@@ -2,13 +2,13 @@
 Reporting layer. Reads TraceRows and computes the cross-model aggregates that
 DON'T live on individual rows:
 
-  weighted_composite  — per-profile leaderboard number from metric weights
-  tuning_gain         — adapted minus baseline, per metric
-  pareto_frontier     — non-dominated models on (accuracy, cost, latency)
-  elo_from_pairwise   — Bradley-Terry / Elo ranking from pairwise judge results
-  bootstrap_ci        — confidence intervals, so "A beats B" isn't just noise
-  error_attribution   — *why* items failed, not just how many
-  judge_calibration   — how far the LLM judge is from human labels
+  weighted_composite, per-profile leaderboard number from metric weights
+  tuning_gain, adapted minus baseline, per metric
+  pareto_frontier, non-dominated models on (accuracy, cost, latency)
+  elo_from_pairwise: Bradley-Terry / Elo ranking from pairwise judge results
+  bootstrap_ci, confidence intervals, so "A beats B" isn't just noise
+  error_attribution, *why* items failed, not just how many
+  judge_calibration, how far the LLM judge is from human labels
 
 All functions operate on pandas DataFrames of trace rows, so they run entirely
 offline against the cached store.
@@ -34,7 +34,7 @@ def weighted_composite(df: pd.DataFrame, weights: dict[str, float],
 
     `normalise=True` min-max scales each metric across models before weighting.
     Without it the composite is dominated by whichever metric has the largest
-    raw range — latency in milliseconds sits in the thousands while accuracy
+    raw range, latency in milliseconds sits in the thousands while accuracy
     sits in [0,1], so a 0.05 latency weight can silently outweigh a 0.5 accuracy
     weight by four orders of magnitude. Off by default to preserve the original
     behaviour and keep scores comparable across runs.
@@ -114,7 +114,7 @@ def pareto_frontier(df: pd.DataFrame,
     Two fixes over the original:
 
     **NaN handling.** Every comparison against NaN is False, so a model missing
-    one objective was never dominated and always landed on the frontier — the
+    one objective was never dominated and always landed on the frontier, the
     models with the *least* data looked the most attractive. Missing objectives
     are now imputed to the worst observed value, so a model can't win by not
     being measured.
@@ -139,7 +139,7 @@ def pareto_frontier(df: pd.DataFrame,
     measurable = agg[["accuracy", "cost", "latency"]].notna().any(axis=1)
 
     # Partially-measured models ARE comparable, so impute their gaps to the
-    # worst observed value — being unmeasured must never be an advantage.
+    # worst observed value, being unmeasured must never be an advantage.
     if agg["accuracy"].notna().any():
         agg["accuracy"] = agg["accuracy"].fillna(agg["accuracy"].min())
     if agg["cost"].notna().any():
@@ -179,7 +179,7 @@ def elo_from_pairwise(pairwise: list[tuple[str, str, str]],
                       iterations: int = 20, seed: int = 0) -> pd.DataFrame:
     """Elo ratings from [(model_a, model_b, winner)] with winner in {A, B, tie}.
 
-    Repeated shuffled passes reduce order sensitivity — a single pass over a
+    Repeated shuffled passes reduce order sensitivity, a single pass over a
     fixed ordering lets whoever played first accumulate an artefact.
     """
     if not pairwise:
@@ -260,7 +260,7 @@ def bootstrap_ci(values, n_boot: int = 2000, ci: float = 0.95,
     """Percentile bootstrap. Returns (mean, lo, hi).
 
     Turns "Model A scores 0.71" into "A: 0.71 [0.68, 0.74]". For *comparing two
-    models*, use `stats.compare_models` instead — these marginal intervals
+    models*, use `stats.compare_models` instead, these marginal intervals
     ignore that both models saw the same items, and overlapping intervals do
     not mean the difference is insignificant.
     """
@@ -306,7 +306,7 @@ def error_attribution(df: pd.DataFrame) -> pd.DataFrame:
     "8% of items failed" is not actionable. "8% failed, all context_length"
     means lower your `k`; "all rate_limit" means lower your concurrency; "all
     content_filter" is a finding about the model. Same number, three different
-    responses — which is why the taxonomy exists.
+    responses, which is why the taxonomy exists.
     """
     if df.empty or "error" not in df.columns:
         return pd.DataFrame()
@@ -322,10 +322,36 @@ def error_attribution(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows).sort_values("error_rate", ascending=False)
 
 
+def metric_by_stratum(df: pd.DataFrame, strata: dict, metric: str = "accuracy",
+                      name: str = "stratum") -> pd.DataFrame:
+    """Per-model, per-stratum mean of `metric` with n, from an item-id map.
+
+    Definition: for each (model, stratum) the plain mean of `metric` over
+    rows whose item_id maps to that stratum and whose `metric` is not null,
+    with `n` the count of such rows. Rows whose item_id is absent from the
+    map are reported under the stratum "unmapped" rather than dropped, so a
+    partial map is visible. No interval and no test: strata are small by
+    construction, and the number is a reading aid beside the paired test,
+    never a replacement for it (I5, I6). The caller supplies the map (for
+    example item language from the evalset meta) because trace rows do not
+    carry item metadata.
+    """
+    if df.empty or metric not in df.columns or "item_id" not in df.columns:
+        return pd.DataFrame()
+    scored = df[df[metric].notna()].copy()
+    if scored.empty:
+        return pd.DataFrame()
+    scored[name] = scored["item_id"].map(lambda i: strata.get(i, "unmapped"))
+    out = (scored.groupby(["model", name])[metric]
+           .agg(["mean", "count"]).reset_index()
+           .rename(columns={"mean": metric, "count": "n"}))
+    return out.sort_values(["model", name]).reset_index(drop=True)
+
+
 def truncation_report(df: pd.DataFrame) -> pd.DataFrame:
     """How often each model's answer was cut off by `max_tokens`.
 
-    A high rate invalidates completeness and citation scores for that model —
+    A high rate invalidates completeness and citation scores for that model,
     it was measured mid-sentence. This is a config problem masquerading as a
     quality finding, and without this column it looks exactly like one.
     """
@@ -334,11 +360,55 @@ def truncation_report(df: pd.DataFrame) -> pd.DataFrame:
     rows = []
     for model, g in df.groupby("model"):
         vals = g["truncated"].dropna()
-        if len(vals):
-            rows.append({"model": model, "n": len(vals),
-                         "truncated": int(vals.sum()),
-                         "truncation_rate": float(vals.mean())})
+        if not len(vals):
+            continue
+        rec = {"model": model, "n": len(vals),
+               "truncated": int(vals.sum()),
+               "truncation_rate": float(vals.mean())}
+        # Hidden reasoning is the usual reason a generous max_tokens still
+        # truncates: the budget went on thinking before the first visible
+        # character. reasoning_rate = share of rows where the provider
+        # returned reasoning text; reasoning_tokens_mean = mean of the
+        # provider's own count where it reported one (None rows excluded).
+        if "reasoning_chars" in g.columns:
+            rc = pd.to_numeric(g["reasoning_chars"], errors="coerce").dropna()
+            if len(rc):
+                rec["reasoning_rate"] = float((rc > 0).mean())
+        if "reasoning_tokens" in g.columns:
+            rt = pd.to_numeric(g["reasoning_tokens"], errors="coerce").dropna()
+            if len(rt):
+                rec["reasoning_tokens_mean"] = float(rt.mean())
+        # Empty visible answers: the case where truncation is total.
+        if "raw_output" in g.columns:
+            ro = g["raw_output"].fillna("").astype(str).str.strip()
+            rec["empty_answer_rate"] = float((ro == "").mean())
+        rows.append(rec)
     return (pd.DataFrame(rows).sort_values("truncation_rate", ascending=False)
+            if rows else pd.DataFrame())
+
+
+def estimated_usage_report(df: pd.DataFrame) -> pd.DataFrame:
+    """How much of each model's cost was estimated rather than measured (I3).
+
+    Only ever non-zero when a profile explicitly opted into estimation for a
+    provider that omits its usage block. It sits beside the cost columns for the
+    same reason `truncation_report` sits beside accuracy: a number that is
+    partly fabricated looks exactly like a measured one, and the composite
+    weights cost negatively, so an under-estimate promotes the model.
+
+    An empty frame means every token in the run came from a provider usage
+    block, which is the normal and required case.
+    """
+    if df.empty or "usage_estimated" not in df.columns:
+        return pd.DataFrame()
+    rows = []
+    for model, g in df.groupby("model"):
+        vals = g["usage_estimated"].dropna()
+        if len(vals) and bool(vals.any()):
+            rows.append({"model": model, "n": len(vals),
+                         "estimated": int(vals.sum()),
+                         "estimated_rate": float(vals.mean())})
+    return (pd.DataFrame(rows).sort_values("estimated_rate", ascending=False)
             if rows else pd.DataFrame())
 
 
@@ -355,7 +425,7 @@ def judge_calibration(df: pd.DataFrame, human_col: str = "human_label",
     items carries a human label.
 
     Cohen's kappa rather than raw agreement, because raw agreement is inflated
-    by the base rate — a judge that marks everything correct scores 90%
+    by the base rate, a judge that marks everything correct scores 90%
     agreement on a set that's 90% correct while carrying no information at all.
     Kappa corrects for chance and would report ~0 there.
     """
@@ -413,12 +483,46 @@ def _kappa_label(kappa: float) -> str:
 # ---------------------------------------------------------------------------
 #  Consistency (paraphrase probes)
 # ---------------------------------------------------------------------------
+def cost_per_correct(df: pd.DataFrame, metric: str = "accuracy") -> pd.DataFrame:
+    """Cost per correct answer, per model.
+
+    Definition, exactly: for each model, mean(cost_usd over scored items)
+    divided by mean(metric over scored items), where a scored item is one
+    with a non-null metric value. It is the price of one right answer at this
+    model's observed accuracy, the number that drives procurement (§10.7).
+
+    None, not 0, when a model has no scored items or a mean metric of zero:
+    a model that is never right has no cost per correct answer, and 0 would
+    read as free.
+
+    Columns: model, n_scored, cost_usd (mean per item), <metric> (mean),
+    cost_per_correct_answer.
+    """
+    if df.empty or "model" not in df.columns or metric not in df.columns \
+            or "cost_usd" not in df.columns:
+        return pd.DataFrame()
+    out = []
+    for model, g in df.groupby("model"):
+        scored = g[g[metric].notna()]
+        n = int(len(scored))
+        if n == 0:
+            out.append({"model": model, "n_scored": 0, "cost_usd": None,
+                        metric: None, "cost_per_correct_answer": None})
+            continue
+        cost = float(scored["cost_usd"].fillna(0).mean())
+        acc = float(scored[metric].mean())
+        cpc = (cost / acc) if acc > 0 else None
+        out.append({"model": model, "n_scored": n, "cost_usd": cost,
+                    metric: acc, "cost_per_correct_answer": cpc})
+    return pd.DataFrame(out)
+
+
 def consistency_report(df: pd.DataFrame) -> pd.DataFrame:
     """Per model: how stable answers are across paraphrases of the same question.
 
     Reads the `consistency_group` column that paraphrase probes populate. A
     model scoring well on accuracy but poorly here answers correctly only when
-    asked in exactly the right words — which is not a system you can ship to
+    asked in exactly the right words, which is not a system you can ship to
     users who phrase things however they like.
     """
     from ..eval.metrics import token_f1

@@ -2,21 +2,21 @@
 The provider contract.
 
 Everything above this file is provider-agnostic. Adding a vendor means writing
-one adapter — never touching the runner, the metrics, or the report layer.
+one adapter, never touching the runner, the metrics, or the report layer.
 
 **Interface segregation.** A RAG evaluation needs three capabilities, and almost
 no provider has all three. Anthropic serves no embeddings; Groq serves neither
 embeddings nor reranking; OpenRouter has embeddings but no rerank endpoint. A
 single fat `LLMClient` forced every adapter to implement all four methods and
-made the missing ones raise — so "can this provider embed?" was answered by a
+made the missing ones raise, so "can this provider embed?" was answered by a
 *boolean flag* that could, and did, disagree with the code. (OpenRouter shipped
 declared as embedding-incapable while its adapter would have handled it fine.)
 
 So the contract is split by capability:
 
-    TextGenerator      generate() / judge()   — every provider
-    Embedder           embed()                — most, not all
-    DocumentReranker   rerank()               — few
+    TextGenerator      generate() / judge(), every provider
+    Embedder           embed(), most, not all
+    DocumentReranker   rerank(), few
 
 Consumers depend on the narrowest protocol they actually use: `Retriever` needs
 an `Embedder`, `Reranker` needs a `DocumentReranker`. `LLMClient` remains as the
@@ -28,7 +28,7 @@ do something (Anthropic embedding) simply does not define the method, so the two
 signals cannot drift apart.
 
 Token counts always come from the provider's usage block. Every model has a
-different tokenizer, so a local count would disagree with the bill — and cost is
+different tokenizer, so a local count would disagree with the bill, and cost is
 a headline metric here, not a footnote.
 """
 
@@ -37,6 +37,21 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Protocol, runtime_checkable
+
+
+class MissingUsageError(RuntimeError):
+    """A provider returned no usage block, and estimation was not opted into.
+
+    This is deliberately fatal. The tempting alternative, substituting zero,
+    is the worst available option, because cost carries a *negative* weight in
+    the leaderboard composite: a model whose usage block went missing would be
+    billed $0.00 and would therefore *rise* in the ranking. A run that silently
+    under-bills is not a cheaper run, it is a wrong one.
+
+    Estimation is available, but only on explicit opt-in, and it marks every
+    row it touches with `usage_estimated=True` so the report can surface the
+    rate rather than let it pass as measured.
+    """
 
 
 @dataclass
@@ -49,6 +64,17 @@ class GenResult:
     ttft_ms: float | None = None      # populated only when streaming
     finish_reason: str | None = None  # "stop" | "length" | "content_filter" | ...
     model: str = ""                   # what the provider says it served
+    # False means the counts came from the provider's own usage block. True
+    # means they were estimated under an explicit opt-in and must be reported
+    # as such, never mixed into a cost figure presented as measured (I3).
+    usage_estimated: bool = False
+    # Hidden reasoning, for models that think before they answer: tokens as
+    # the provider reported them (None = not reported), and chars of the
+    # reasoning text it returned beside the answer (0 = none). Billed inside
+    # completion_tokens, so cost needs no correction; recorded so a report can
+    # separate the visible answer from the hidden work (I3).
+    reasoning_tokens: int | None = None
+    reasoning_chars: int = 0
 
     @property
     def truncated(self) -> bool:
@@ -66,6 +92,7 @@ class GenResult:
 class EmbedResult:
     vectors: list[list[float]]
     prompt_tokens: int  # embeddings bill on input tokens only
+    usage_estimated: bool = False
 
 
 class Capability(str, Enum):
@@ -120,7 +147,7 @@ class Embedder(Protocol):
 
 @runtime_checkable
 class DocumentReranker(Protocol):
-    """Cross-encoder reordering. Rare — Together has it, most others don't."""
+    """Cross-encoder reordering. Rare: Together has it, most others don't."""
 
     def rerank(self, model: str, query: str, documents: list[str],
                top_n: int | None = None) -> list[tuple[int, float]]: ...
@@ -144,7 +171,7 @@ def supports(client: object, capability: Capability) -> bool:
 
     Both signals must agree: the method has to exist AND the provider has to
     declare the capability. Structural presence alone is not enough, because one
-    adapter class serves several vendors — the same `OpenAICompatibleClient`
+    adapter class serves several vendors, the same `OpenAICompatibleClient`
     backs Together (embeddings) and Groq (none), so capability is a property of
     the *instance*, not the class.
     """

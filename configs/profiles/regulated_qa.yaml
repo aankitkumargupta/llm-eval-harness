@@ -9,7 +9,11 @@ corpus_path: data/regulated_qa/corpus.jsonl
 evalset_path: data/regulated_qa/evalset.jsonl
 
 # Fixed embedder - part of the apparatus, identical across all models under test.
-embedding_model: "BAAI/bge-large-en-v1.5"
+# bge-BASE rather than bge-large: the large model was not invokable on the
+# hosted account (R-20), and base is the size FastEmbed serves locally. Same
+# family, 768-dim, real semantic vectors. Changing this changes
+# apparatus_hash, so no earlier run is silently compared against this one.
+embedding_model: "BAAI/bge-base-en-v1.5"
 
 # Baseline (fixed) retrieval. Regulated QA is lexical-heavy (exact statute
 # citations), so hybrid is a sensible fixed baseline.

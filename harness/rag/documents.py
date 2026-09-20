@@ -4,7 +4,7 @@ The `Document` value object.
 A three-field dataclass, in its own module because of what importing it used to
 cost. `Document` lived in `ingest.py`, which imports `qdrant_client` and (via
 the Together client) the `openai` SDK. Anything that merely wanted to *read* a
-corpus — `profiles/loaders.py`, and therefore the CLI and the Streamlit app —
+corpus: `profiles/loaders.py`, and therefore the CLI and the Streamlit app,
 paid for both.
 
 On a cold Windows install that was ~26 seconds of import time before a single

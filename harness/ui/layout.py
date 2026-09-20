@@ -1,8 +1,8 @@
 """
 Layout shell: sidebar navigation, cards, page headers, KPI tiles.
 
-The visual language this implements is a layered dark dashboard — a deep page
-plane, raised cards, a persistent left rail, and a breadcrumb header — rather
+The visual language this implements is a layered dark dashboard, a deep page
+plane, raised cards, a persistent left rail, and a breadcrumb header, rather
 than the flat tab strip the app used before.
 
 The structural change is the nav. Tabs are fine for four sections and fall apart
@@ -12,10 +12,10 @@ exactly one page body per interaction.
 
 Responsibilities are kept apart on purpose:
 
-    layout.py   how a page is framed  — chrome, cards, headers, tiles
-    pages.py    which pages exist     — the registry
+    layout.py   how a page is framed, chrome, cards, headers, tiles
+    pages.py    which pages exist, the registry
     charts.py   how data is drawn
-    theme.py    what things look like — tokens only
+    theme.py    what things look like, tokens only
 
 so restyling never means touching a page's content, and adding a page never
 means touching the chrome.
@@ -155,8 +155,8 @@ class card:
             st.altair_chart(...)
 
     Implemented by opening a styled wrapper, yielding to a Streamlit container,
-    then closing it. The container is what lets real widgets — charts, tables,
-    buttons — live inside the card rather than only static markup.
+    then closing it. The container is what lets real widgets, charts, tables,
+    buttons, live inside the card rather than only static markup.
     """
 
     def __init__(self, title: str = "", subtitle: str = "",
@@ -197,7 +197,7 @@ class Kpi:
     """A headline number with an optional change badge.
 
     `delta` is a signed fraction (0.12 = +12%). `higher_is_better` decides
-    whether a rise is good — for cost and latency it is not, and colouring a
+    whether a rise is good, for cost and latency it is not, and colouring a
     cost increase green is the kind of small lie that makes a dashboard
     untrustworthy.
     """

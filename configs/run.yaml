@@ -6,6 +6,12 @@ profiles:
   - configs/profiles/tabular.yaml
   - configs/profiles/high_vol_chat.yaml
   - configs/profiles/support_triage.yaml
+  # Indian-government use cases (synthetic, illustrative datasets under data/).
+  - configs/profiles/in_grievance_triage.yaml
+  - configs/profiles/in_notice_translation.yaml
+  - configs/profiles/in_rti_drafting.yaml
+  - configs/profiles/in_scheme_qa.yaml
+  - configs/profiles/in_statute_qa.yaml
 
 passes:
   baseline: true    # fixed prompt + fixed retrieval
@@ -66,7 +72,7 @@ checkpoint_every: 50
 #
 # `qdrant_path` wins when both are set. Uncomment the line below to run fully
 # locally without remembering `--qdrant-path` on every command.
-# qdrant_path: "workspace/qdrant"
+qdrant_path: "workspace/qdrant"
 qdrant_url: "http://localhost:6333"
 
 cache_dir: ".cache"

@@ -1,0 +1,45 @@
+# WinoGrande: fill-in-the-blank pronoun resolution with two options, built
+# to defeat the lexical shortcuts that solved the original Winograd schemas.
+# The debiased config is the one the paper reports on.
+id: winogrande
+version: 1
+family: multiple_choice
+task: direct
+
+source:
+  kind: hf
+  ref: allenai/winogrande
+  config: winogrande_debiased
+  split: validation
+  checksum: "sha256:d071dd15f0991c02571f94aa8bad343e465ed0a989046d843860c77e81198bfe"
+  # The dataset card lists CC-BY; the exact variant is not stated on the card,
+  # so commercial use is recorded as true per CC-BY and noted here.
+  licence: CC-BY
+  commercial_use: true
+  citation: "Sakaguchi et al., 2020: WinoGrande, An Adversarial Winograd Schema Challenge at Scale"
+
+sampling: {limit: null, seed: 1729, stratify_by: "", samples_per_item: 1}
+
+prompt:
+  template: ""
+  few_shot: {n: 0, selection: fixed, pool_split: train}
+  system: null
+  decoding: {temperature: 0.0, max_tokens: 256, top_p: 1.0}
+
+scoring:
+  mode: generative
+  extraction:
+    chain:
+      - {kind: regex, pattern: 'Answer:\s*\(?([AB])\)?'}
+      - {kind: regex, pattern: '\*\*\s*\(?([AB])\)?\s*\*\*'}
+      - {kind: last_capital_letter, max_option: B}
+  metric: accuracy
+  chance_level: 0.5
+  aggregate: [mean]
+
+reporting:
+  primary_metric: accuracy
+  also: [accuracy_chance_adjusted, extraction_failure_rate,
+         format_violation_rate, truncation_rate, cost_usd, latency_p95_ms]
+
+contamination: {canary: false, ngram_overlap_against: null, perturbations: [option_shuffle]}

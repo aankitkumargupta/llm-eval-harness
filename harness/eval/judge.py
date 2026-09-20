@@ -1,8 +1,8 @@
 """
 LLM-as-judge subsystem.
 
-Scores the qualities gold-matching can't capture — faithfulness, relevance,
-completeness — and runs the pairwise comparisons behind the Elo leaderboard.
+Scores the qualities gold-matching can't capture, faithfulness, relevance,
+completeness, and runs the pairwise comparisons behind the Elo leaderboard.
 
 Integrity rules kept from the original design:
   * A fixed judge model at temperature 0.
@@ -14,13 +14,13 @@ What's new, and why each matters:
 
 **Caching.** A judge verdict is a pure function of (judge model, rubric,
 question, context, answer, gold). It was re-billed on every re-run of an
-otherwise fully cached evaluation — and since the judge is a large model called
+otherwise fully cached evaluation, and since the judge is a large model called
 up to twice per item, it is typically the single largest line in the bill.
 
 **An ensemble.** One judge is a single point of failure with its own biases. A
 panel of judges lets you take the median and, more usefully, *measure their
 disagreement*. High spread on an item is the honest signal that the item is
-ambiguous rather than that the model failed — that's a dataset problem, and it
+ambiguous rather than that the model failed, that's a dataset problem, and it
 should surface as one.
 
 **Position-bias-corrected pairwise.** Judges favour whichever answer they see
@@ -76,7 +76,7 @@ def _family(model: str) -> str:
     """Coarse model family: 'meta-llama/Llama-3-70b' -> 'meta-llama'.
 
     Also strips a `provider:` routing prefix so 'anthropic:claude-opus-5' and a
-    bare 'claude-opus-5' resolve to the same family — otherwise the
+    bare 'claude-opus-5' resolve to the same family, otherwise the
     self-judging guard is trivially defeated by how the model happens to be
     addressed in the config.
     """
@@ -130,7 +130,7 @@ class JudgeScores:
     accuracy: float | None = None
     abstained: bool | None = None
     # Spread across ensemble members. High disagreement means the *item* is
-    # ambiguous, not that the model did badly — worth surfacing separately.
+    # ambiguous, not that the model did badly, worth surfacing separately.
     disagreement: float | None = None
     n_judges: int = 1
     parse_failures: int = 0
@@ -148,7 +148,7 @@ class Judge:
         self.client = client
         self.judge_model = judge_model
         self.cache = cache
-        # An ensemble of one is just the single judge — same code path, no
+        # An ensemble of one is just the single judge, same code path, no
         # special-casing anywhere downstream.
         self.ensemble = list(ensemble) if ensemble else [judge_model]
         self.max_tokens = max_tokens
@@ -184,7 +184,7 @@ class Judge:
         try:
             r = self.client.judge(judge_model, messages, max_tokens=self.max_tokens)
             parsed = _extract_json(r.text)
-        except Exception:  # noqa: BLE001 — an unusable verdict is "not measured"
+        except Exception:  # noqa: BLE001, an unusable verdict is "not measured"
             parsed = None
 
         if self.cache is not None and key is not None and parsed is not None:

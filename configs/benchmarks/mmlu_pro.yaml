@@ -1,0 +1,61 @@
+# MMLU-Pro, ten-way multiple choice.
+#
+# `version` feeds spec_hash. Bump it on ANY change below: the reporter refuses
+# to compare rows whose spec_hash differs, which is the whole mechanism that
+# stops a re-formatted prompt from being compared against last month's number.
+id: mmlu_pro
+version: 1
+family: multiple_choice
+task: direct
+
+source:
+  kind: local
+  # Points at the committed SYNTHETIC fixture so the whole path is offline-
+  # testable. For a real run, fetch the dataset and repoint this at the file:
+  #   ref: TIGER-Lab/MMLU-Pro   (kind: hf, with a real checksum)
+  ref: tests/bench/fixtures/mmlu_pro_synthetic.jsonl
+  split: test
+  checksum: ""
+  licence: MIT
+  commercial_use: true
+  citation: "Wang et al., 2024 (MMLU-Pro)"
+
+sampling:
+  limit: null
+  seed: 1729
+  stratify_by: subject
+  samples_per_item: 1
+
+prompt:
+  template: ""
+  few_shot:
+    n: 0
+    selection: fixed
+    pool_split: dev        # never the scored split; the loader rejects that
+  system: null
+  decoding: {temperature: 0.0, max_tokens: 1024, top_p: 1.0}
+
+scoring:
+  mode: generative
+  extraction:
+    # First match wins. Ordered most-specific to least: the explicit "Answer:"
+    # form is unambiguous, the bare capital letter is a guess that usually
+    # works, and anything past those is an honest extraction failure rather
+    # than a zero.
+    chain:
+      - {kind: regex, pattern: 'Answer:\s*\(?([A-J])\)?'}
+      - {kind: regex, pattern: '\*\*\s*\(?([A-J])\)?\s*\*\*'}
+      - {kind: last_capital_letter, max_option: J}
+  metric: accuracy
+  chance_level: 0.1        # TEN options, not four
+  aggregate: [mean, "by:subject"]
+
+reporting:
+  primary_metric: accuracy
+  also: [accuracy_chance_adjusted, extraction_failure_rate, format_violation_rate,
+         truncation_rate, cost_usd, latency_p95_ms]
+
+contamination:
+  canary: false
+  ngram_overlap_against: null
+  perturbations: [option_shuffle]

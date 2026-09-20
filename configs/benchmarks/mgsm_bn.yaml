@@ -1,0 +1,44 @@
+# MGSM, Bengali: the 250 GSM8K test problems translated by professional
+# translators. One of the two Indic languages MGSM covers (with Telugu).
+# Scored like GSM8K: numeric equivalence on the final answer, with native
+# Bengali digits normalised to ASCII before comparison.
+id: mgsm_bn
+version: 1
+family: math
+task: direct
+
+source:
+  kind: hf
+  ref: juletxara/mgsm
+  config: bn
+  split: test
+  checksum: "sha256:e201176f55d61529efde982b0a529f5bc012f82e2832686bf07ca12aa70a6dcc"
+  licence: CC-BY-4.0
+  commercial_use: true
+  citation: "Shi et al., 2022: Language Models are Multilingual Chain-of-Thought Reasoners"
+
+sampling: {limit: null, seed: 1729, stratify_by: "", samples_per_item: 1}
+
+prompt:
+  template: ""
+  few_shot: {n: 0, selection: fixed, pool_split: train}
+  system: null
+  decoding: {temperature: 0.0, max_tokens: 1024, top_p: 1.0}
+
+scoring:
+  mode: generative
+  extraction:
+    chain:
+      - {kind: regex, pattern: '####\s*(-?[\d,\.]+)'}
+      - {kind: boxed}
+      - {kind: numeric}
+  metric: accuracy
+  chance_level: 0.0
+  aggregate: [mean]
+
+reporting:
+  primary_metric: accuracy
+  also: [extraction_failure_rate, refusal_rate, truncation_rate, cost_usd,
+         cost_per_correct_answer, latency_p95_ms]
+
+contamination: {canary: false, ngram_overlap_against: null, perturbations: [numeral_change]}

@@ -3,14 +3,14 @@ Optional reranking (pipeline step 4).
 
 Takes the retriever's candidates and reorders them with a cross-encoder, keeping
 the top-n. Reranking often doesn't change which gold passages are PRESENT
-(hit-rate) but does improve their RANK (MRR) — the harness logs both so that
+(hit-rate) but does improve their RANK (MRR), the harness logs both so that
 distinction is visible rather than averaged away.
 
 Two additions:
 
   * **A capability failure is not an item failure.** If the configured provider
     has no rerank endpoint, every item would raise and be recorded as a model
-    error — thousands of rows blaming the model for a config mistake. The
+    error, thousands of rows blaming the model for a config mistake. The
     reranker now degrades to identity once, warns, and lets the run produce
     valid (unreranked) results.
   * **Over-fetch awareness.** A reranker can only reorder what it was handed.

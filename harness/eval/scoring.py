@@ -4,7 +4,7 @@ The scoring pipeline, as a registry of independent scorers.
 **The problem this solves.** `run_item` grew a ~200-line chain of
 `if "metric" in active: row.metric = M.metric(...)` blocks covering retrieval,
 citations, abstention, probes, accuracy, classification and the judge. Adding a
-metric meant editing the single hottest function in the codebase — the one that
+metric meant editing the single hottest function in the codebase, the one that
 also owns retrieval, prompt assembly, generation, caching and cost. That is both
 an Open/Closed failure (extension requires modification) and a Single
 Responsibility failure (one function, seven reasons to change).
@@ -17,7 +17,7 @@ Consequences worth having:
 
   * Adding a metric is a new class plus one registry entry. No existing file
     changes, so nothing already working can regress.
-  * Each scorer is independently testable with a hand-built context — no
+  * Each scorer is independently testable with a hand-built context, no
     network, no vector store, no orchestrator.
   * A scorer that raises degrades to "that metric wasn't measured" instead of
     failing the whole item. One bad judge reply should not discard a paid
@@ -52,19 +52,21 @@ class ScoringContext:
     accuracy_scorer: str = "judge"
     task: TaskType = TaskType.RAG
 
-    # Retrieval, as it actually happened — before any probe mutation. Retrieval
+    # Retrieval, as it actually happened, before any probe mutation. Retrieval
     # is scored on what the retriever found, not on passages a probe fabricated.
     retrieved_ids: list[str] = field(default_factory=list)
     reranked_ids: list[str] = field(default_factory=list)
     k: int = 10
 
-    # The context the MODEL saw — after probe mutation.
+    # The context the MODEL saw, after probe mutation.
     chunks_shown: list[RetrievedChunk] = field(default_factory=list)
     context_text: str = ""
 
     # Collaborators. Optional so a scorer needing one can simply not apply.
     judge: Any = None
     abstention_judge: bool = False
+    # Script the answer is expected in ("" = not scored); see metrics.native_script_ratio.
+    target_script: str = ""
     label_set: list[str] = field(default_factory=list)
 
     @property
@@ -301,7 +303,29 @@ def parse_label(answer: str, label_set: list[str]) -> str | None:
 # --------------------------------------------------------------------------- #
 # Order is meaningful only where two scorers write the same field. The one
 # case is `accuracy`: deterministic -> classification -> judge, last wins.
+class NativeScriptScorer:
+    """Share of the answer written in the profile's target script.
+
+    A translation into Hindi that comes back half in Latin script has not
+    done the job, however faithful the judge finds it. Reported on its own
+    metric, never folded into accuracy: the two failures are different and
+    a reader should see which one happened.
+    """
+
+    name = "native_script"
+    produces = ("native_script_ratio",)
+
+    def applies(self, ctx: ScoringContext) -> bool:
+        return bool(ctx.target_script) and "native_script_ratio" in ctx.active
+
+    def score(self, ctx: ScoringContext) -> dict[str, Any]:
+        from .languages import resolve_script
+        return {"native_script_ratio": M.native_script_ratio(
+            ctx.answer or "", resolve_script(ctx.target_script))}
+
+
 DEFAULT_SCORERS: tuple[Scorer, ...] = (
+    NativeScriptScorer(),
     RetrievalScorer(),
     CitationScorer(),
     AbstentionScorer(),
@@ -324,7 +348,7 @@ def run_scorers(ctx: ScoringContext,
 
     A scorer that raises costs its own metrics and nothing else. The generation
     was already paid for, and the other metrics computed from it are still
-    valid — discarding them because one judge reply failed to parse would throw
+    valid, discarding them because one judge reply failed to parse would throw
     away good data over a recoverable problem.
     """
     result = ScoringResult()
@@ -332,6 +356,6 @@ def run_scorers(ctx: ScoringContext,
         try:
             if scorer.applies(ctx):
                 result.values.update(scorer.score(ctx))
-        except Exception as e:  # noqa: BLE001 — isolate one scorer's failure
+        except Exception as e:  # noqa: BLE001, isolate one scorer's failure
             result.failures[scorer.name] = f"{type(e).__name__}: {e}"
     return result

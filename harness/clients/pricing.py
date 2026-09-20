@@ -1,5 +1,5 @@
 """
-Pricing registry — turns token counts into dollars.
+Pricing registry, turns token counts into dollars.
 
 Prices change, so this reads a DATED config (configs/pricing.yaml). The cost
 metric is only as trustworthy as that file, so it must be refreshed from live
@@ -10,14 +10,14 @@ unit every vendor's pricing page uses.
 
 Design rule kept from the original: an unpriced model raises rather than
 returning zero. Silently reporting $0.00 would not merely mis-state the dollar
-figure — cost carries a *negative weight* in the leaderboard composite, so a
+figure, cost carries a *negative weight* in the leaderboard composite, so a
 free-looking model would leap to the top of the ranking. A loud failure is the
 only safe behaviour.
 
 Two additions:
-  * `staleness_days` — prices drift, and a benchmark quoting year-old rates as
+  * `staleness_days`, prices drift, and a benchmark quoting year-old rates as
     fact is misleading in a way nobody notices. The report surfaces the age.
-  * per-query rerank pricing — rerank endpoints commonly bill per query or per
+  * per-query rerank pricing, rerank endpoints commonly bill per query or per
     document rather than per token.
 """
 
@@ -68,7 +68,7 @@ class PricingRegistry:
         """Drop a leading `provider:` routing prefix, or None if there isn't one.
 
         Only strips *known* provider names, because Ollama tags contain a colon
-        too — blindly splitting would turn `llama3.1:8b` into `8b`.
+        too, blindly splitting would turn `llama3.1:8b` into `8b`.
         """
         from .registry import split_model_ref
 
@@ -91,7 +91,7 @@ class PricingRegistry:
           also matching a dated snapshot of itself), longest match winning so a
           specific price always beats a general one.
         * A **provider-qualified key wins over a bare one**, because the same
-          model genuinely costs different amounts on different routers —
+          model genuinely costs different amounts on different routers.
           `openrouter:openai/gpt-oss-120b` and a direct Together
           `openai/gpt-oss-120b` are the same weights at different prices.
         * Falling back to the bare name means adding a `provider:` prefix to a
@@ -115,7 +115,7 @@ class PricingRegistry:
                 return 0.0
             raise KeyError(
                 f"No pricing for model '{model}' in {self.config_path} "
-                f"(as_of {self.as_of}). Add it before running cost metrics — "
+                f"(as_of {self.as_of}). Add it before running cost metrics: "
                 f"an unpriced model would score as free and win the leaderboard."
             )
         return (prompt_tokens / 1e6) * p["input"] + \
@@ -131,7 +131,7 @@ class PricingRegistry:
         return (tokens / 1e6) * p["input"]
 
     def rerank_cost(self, model: str, tokens: int = 0, n_docs: int = 0) -> float:
-        """Rerank endpoints bill per query, per document, or per token — support all three."""
+        """Rerank endpoints bill per query, per document, or per token, support all three."""
         p = self._lookup(self.rerank, model)
         if p is None:
             if self.strict and self.rerank:

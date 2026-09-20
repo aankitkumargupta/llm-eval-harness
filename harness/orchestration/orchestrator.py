@@ -1,7 +1,7 @@
 """
 The orchestrator: wiring, not work.
 
-This class used to *be* the matrix walk — three passes, the tuning search, the
+This class used to *be* the matrix walk, three passes, the tuning search, the
 arena, row buffering, progress reporting and resume bookkeeping, all sharing
 five pieces of mutable state. That is six reasons to change one class, and the
 shared state is what made it hard to reason about under concurrency.
@@ -11,16 +11,16 @@ collaborators a run needs (client, retriever, reranker, judge, cache, meter)
 and hand them to whichever pass was asked for. The work lives in:
 
     passes.py     BaselinePass / AdaptedPass / LatencyPass
-    collector.py  RowCollector — buffering, checkpointing, progress
-    arena.py      ArenaService — pairwise judging over stored answers
-    runner.py     run_item — one item, end to end
+    collector.py  RowCollector, buffering, checkpointing, progress
+    arena.py      ArenaService, pairwise judging over stored answers
+    runner.py     run_item, one item, end to end
     scoring.py    the metric registry
 
 The public API is unchanged (`run_baseline`, `run_adapted`, `run_latency`,
 `run_arena`), so the CLI, the app and the UI runner keep working untouched. A
 refactor that forces its callers to change is a rewrite wearing a disguise.
 
-Adding a fourth kind of pass — a retrieval-free ablation, a multi-turn walk —
+Adding a fourth kind of pass, a retrieval-free ablation, a multi-turn walk,
 is now a new class in `passes.py` plus one method here, with nothing existing
 modified.
 """
@@ -77,7 +77,7 @@ class Orchestrator:
         self.collector = RowCollector(store, checkpoint_every, progress_cb)
 
     # ------------------------------------------------------------------ #
-    #  Collaborator assembly — the one job this class kept
+    #  Collaborator assembly, the one job this class kept
     # ------------------------------------------------------------------ #
     def _context(self, profile: Profile, cache: KeyValueCache | None = None,
                  stream: bool = False) -> RunContext:
@@ -97,6 +97,7 @@ class Orchestrator:
             seed=profile.seed, meter=self.meter, task=profile.task,
             stream=stream, abstention_judge=profile.abstention_judge,
             label_set=list(profile.label_set),
+            target_script=profile.target_script,
             provider=getattr(getattr(self.client, "info", None), "name", ""),
         )
 
@@ -134,10 +135,11 @@ class Orchestrator:
 
     def run_latency(self, profile: Profile, models: list[str],
                     items: list[EvalItem], run_id: str,
-                    warmup: int = 1, repeats: int = 1) -> RunReport:
+                    warmup: int = 1, repeats: int = 1,
+                    resume_from: str | None = None) -> RunReport:
         return LatencyPass(**self._pass_kwargs()).run(
             profile, models, run_id, items=items, warmup=warmup,
-            repeats=repeats)
+            repeats=repeats, done_keys=self._existing_keys(resume_from))
 
     def run_arena(self, profile: Profile, models: list[str], run_id: str,
                   source_run: str | None = None,
@@ -150,7 +152,7 @@ class Orchestrator:
     #  Back-compatible accessors
     # ------------------------------------------------------------------ #
     # The old code exposed these as attributes on the orchestrator. Tests and
-    # the UI runner read them, so they stay — now delegating to the collector
+    # the UI runner read them, so they stay, now delegating to the collector
     # that actually owns the state.
     @property
     def _written(self) -> int:

@@ -2,7 +2,7 @@
 The three screens that produce data: Data, Probes, Run.
 
 Grouped in one module because they form a single linear workflow and share the
-same preconditions — you cannot probe without a dataset, or run without an
+same preconditions, you cannot probe without a dataset, or run without an
 index. Each is still its own `Page`, so the registry treats them independently
 and `available()` explains what is blocking.
 """

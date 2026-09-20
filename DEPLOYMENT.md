@@ -1,6 +1,6 @@
 # Deployment guide
 
-How to run this harness for real — on a laptop, on a shared box, in a container,
+How to run this harness for real, on a laptop, on a shared box, in a container,
 and in CI. Includes the things that bite people: exposing the app, the embedded
 vector store's single-writer rule, and how to stop a mis-typed config from
 spending money all night.
@@ -14,11 +14,11 @@ authentication of its own, by design.
 ## Contents
 
 - [Pick a deployment mode](#pick-a-deployment-mode)
-- [Mode A — Local, single user](#mode-a--local-single-user)
-- [Mode B — Shared server for a team](#mode-b--shared-server-for-a-team)
-- [Mode C — Docker](#mode-c--docker)
-- [Mode D — CI regression gate](#mode-d--ci-regression-gate)
-- [Mode E — Scheduled runs](#mode-e--scheduled-runs)
+- [Mode A: Local, single user](#mode-a--local-single-user)
+- [Mode B: Shared server for a team](#mode-b--shared-server-for-a-team)
+- [Mode C: Docker](#mode-c--docker)
+- [Mode D: CI regression gate](#mode-d--ci-regression-gate)
+- [Mode E: Scheduled runs](#mode-e--scheduled-runs)
 - [Security](#security)
 - [Cost controls](#cost-controls)
 - [Data, state and backup](#data-state-and-backup)
@@ -44,7 +44,7 @@ main branch. B and C matter when results need to be shared.
 
 ---
 
-## Mode A — Local, single user
+## Mode A: Local, single user
 
 The default, and what the app is designed for. No Docker, no server, no ports
 beyond Streamlit's own.
@@ -69,7 +69,7 @@ TOGETHER_API_KEY=your_together_key
 OPENROUTER_API_KEY=your_openrouter_key
 ```
 
-Verify before spending anything — the whole suite runs offline against a fake
+Verify before spending anything, the whole suite runs offline against a fake
 provider, so it needs no key and costs nothing:
 
 ```bash
@@ -89,24 +89,24 @@ streamlit run app.py
 ```
 
 It opens at `http://localhost:8501` and writes everything under `workspace/`.
-Qdrant runs **embedded** — a folder, not a server.
+Qdrant runs **embedded**, a folder, not a server.
 
 ### What the UI does, in order
 
 Navigation is a **sidebar**, grouped by purpose. Only the selected screen runs.
 
-1. **Sidebar** — confirm your key is picked up (each provider shows
+1. **Sidebar**, confirm your key is picked up (each provider shows
    `connected` / `no key`), set a **budget ceiling**, pick the active dataset.
-2. **Data** — upload PDFs and a Q&A spreadsheet → **Build dataset** →
+2. **Data**, upload PDFs and a Q&A spreadsheet → **Build dataset** →
    **Ingest**. Ingest embeds every chunk, so it costs money and is one-time per
    dataset.
-3. **Probes** — generate adversarial items. Free and instant; they cost one
+3. **Probes**, generate adversarial items. Free and instant; they cost one
    model call each later, at run time.
-4. **Run** — pick models, read the estimate (which includes judge calls), run
+4. **Run**, pick models, read the estimate (which includes judge calls), run
    in the background with a live progress bar.
-5. **Overview** — recommendation first, then significance, cost/quality, safety.
-6. **Reports** — every metric, diagnostics, and the export.
-7. **Capabilities** — what this install can do, read from the code.
+5. **Overview**, recommendation first, then significance, cost/quality, safety.
+6. **Reports**, every metric, diagnostics, and the export.
+7. **Capabilities**, what this install can do, read from the code.
 
 Screens that are not ready yet are disabled in the rail *and say why*, so a
 blocked step is never a silent dead end. The active dataset is read from disk,
@@ -114,7 +114,7 @@ so closing the browser and coming back does not lose your place.
 
 ---
 
-## Mode B — Shared server for a team
+## Mode B: Shared server for a team
 
 Two things change: Qdrant becomes a real server, and **you must put
 authentication in front of the app**.
@@ -138,7 +138,7 @@ Run the **read-only dashboard** for the team and keep the **app** (which spends
 money) restricted to whoever owns the budget:
 
 ```bash
-# for everyone — makes no API calls, safe to leave open
+# for everyone, makes no API calls, safe to leave open
 streamlit run dashboard.py --server.port 8502
 
 # for the owner only, behind auth
@@ -183,7 +183,7 @@ streamlit run dashboard.py --server.address 127.0.0.1 --server.port 8502
 
 ---
 
-## Mode C — Docker
+## Mode C: Docker
 
 No Dockerfile ships with the repo, because the right base image depends on
 whether you want the dataset-prep extras. This one covers everything:
@@ -206,7 +206,7 @@ COPY . .
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8501
 
-# Bind to 0.0.0.0 so the container is reachable — put auth in front of it.
+# Bind to 0.0.0.0 so the container is reachable, put auth in front of it.
 CMD ["streamlit", "run", "app.py", \
      "--server.address", "0.0.0.0", "--server.port", "8501", \
      "--server.headless", "true"]
@@ -256,7 +256,7 @@ Then set `qdrant_url: "http://qdrant:6333"` in `configs/run.yaml`.
 
 ---
 
-## Mode D — CI regression gate
+## Mode D: CI regression gate
 
 This is the deployment most teams get the most out of. It answers "did my prompt
 change break anything?" on every PR.
@@ -284,7 +284,7 @@ jobs:
       - run: pip install -r requirements.txt
 
       # The trace store is the baseline. Cache or restore it from wherever you
-      # keep it — an artifact, S3, or committed for a small evalset.
+      # keep it, an artifact, S3, or committed for a small evalset.
       - name: Restore baseline traces
         uses: actions/cache@v4
         with:
@@ -316,12 +316,12 @@ Notes from experience:
   expensive failure mode this tool has.
 - **`--strict`** turns off the significance requirement and fails on any raw
   drop. Use it only if your evalset is large enough that noise is not a factor.
-- The whole *unit* suite (`pytest`) needs no key and no network — run it on
+- The whole *unit* suite (`pytest`) needs no key and no network, run it on
   every push; run the eval gate only where it earns its cost.
 
 ---
 
-## Mode E — Scheduled runs
+## Mode E: Scheduled runs
 
 Hosted models change under you. A nightly run turns that from a surprise into a
 graph.
@@ -350,7 +350,7 @@ desktop tool that happens to render in a browser.
 | **Spends money** | Anyone who reaches the app can start a paid run | Restrict the app; give the team the dashboard instead |
 | **Accepts an API key** | The sidebar takes a key for convenience | Prefer the environment; the field is per-session and never written to disk |
 | **Reads uploaded files** | PDFs are parsed and indexed | Only ingest documents you trust to that extent |
-| **Corpus is an attack surface** | Retrieved text reaches the model as tokens | This is what the injection probes measure — run them |
+| **Corpus is an attack surface** | Retrieved text reaches the model as tokens | This is what the injection probes measure, run them |
 
 Other rules worth keeping:
 
@@ -395,11 +395,11 @@ Everything the harness produces lives under `workspace/` (app) or the paths in
 
 | Path | What it is | Back up? | Safe to delete? |
 |---|---|---|---|
-| `workspace/traces/` | Results — one Parquet part per checkpoint | **Yes** | No, this is the product |
+| `workspace/traces/` | Results, one Parquet part per checkpoint | **Yes** | No, this is the product |
 | `workspace/qdrant/` | Embedded vector index | Optional | Yes, but you must re-ingest (costs money) |
 | `workspace/cache/` | Cached generations and judge verdicts | Recommended | Yes, but re-runs then re-bill |
 | `workspace/data/` | Uploaded corpora and evalsets | **Yes** | No, unless you have the originals |
-| `.env` | Keys | **No** — never | — |
+| `.env` | Keys | **No**, never |, |
 
 Backing up is a file copy; there is no database:
 
@@ -433,7 +433,7 @@ Two migration notes:
   sitting beside the directory is adopted and read transparently, so your
   history stays visible. Nothing to do.
 - **Profiles are validated on load** and now reject mistakes that used to pass
-  silently — a positive weight on a lower-is-better metric, weights on metrics
+  silently, a positive weight on a lower-is-better metric, weights on metrics
   the profile never collects, typos in `active_metrics`. `validate` reports every
   problem at once.
 
@@ -445,7 +445,7 @@ Know these before you scale up:
 
 - **Embedded Qdrant is single-process.** The folder is locked by whoever opens
   it. Do not run the app and a CLI ingest against the same `workspace/qdrant`
-  at the same time — use a Qdrant server if you need concurrent access.
+  at the same time, use a Qdrant server if you need concurrent access.
 - **The app runs one heavy job at a time**, enforced. It is a single-user tool;
   two people clicking Run will queue behind each other at best.
 - **`max_workers` is throughput-lane concurrency.** Raising it past your
@@ -461,7 +461,7 @@ Know these before you scale up:
 ## Health checks
 
 ```bash
-# Config, dataset and provider routing — before spending anything
+# Config, dataset and provider routing, before spending anything
 python main.py validate --profile regulated_qa
 
 # What a run would cost, judge calls included
@@ -488,7 +488,7 @@ Before letting anyone else touch it:
 - [ ] `python main.py validate --profile <p>` is clean
 - [ ] Keys are in the environment or `.env`, **not** in the image or a commit
 - [ ] `budget_usd` is set in `configs/run.yaml`
-- [ ] `configs/pricing.yaml` refreshed — `validate` warns when it is stale, and
+- [ ] `configs/pricing.yaml` refreshed: `validate` warns when it is stale, and
       stale prices mis-rank models rather than just mis-stating dollars
 - [ ] The app is bound to loopback or behind authenticated TLS
 - [ ] The team gets `dashboard.py`, not `app.py`
