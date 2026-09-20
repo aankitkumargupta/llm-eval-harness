@@ -1,0 +1,46 @@
+# ARC-Easy: grade-school science, four-way multiple choice.
+#
+# Same dataset family and row shape as `arc_challenge`, so it reuses
+# `ARCAdapter` unchanged; only the HF config differs. It is a separate spec
+# (and therefore a separate spec_hash) because the two splits have different
+# difficulty and are never averaged together without a declared weighting.
+id: arc_easy
+version: 1
+family: multiple_choice
+task: direct
+
+source:
+  kind: hf
+  ref: allenai/ai2_arc
+  config: ARC-Easy        # the config IS the task name here
+  split: test
+  checksum: "sha256:4f0d9d9eb01e6a93f652a8e0c67ec4ff84e9df7a5810e0a3a23e573322bdea1f"
+  licence: CC-BY-SA-4.0
+  commercial_use: true
+  citation: "Clark et al., 2018 - Think you have Solved Question Answering?"
+
+sampling: {limit: null, seed: 1729, stratify_by: "", samples_per_item: 1}
+
+prompt:
+  template: ""
+  few_shot: {n: 0, selection: fixed, pool_split: train}
+  system: null
+  decoding: {temperature: 0.0, max_tokens: 512, top_p: 1.0}
+
+scoring:
+  mode: generative
+  extraction:
+    chain:
+      - {kind: regex, pattern: 'Answer:\s*\(?([A-H])\)?'}
+      - {kind: regex, pattern: '\*\*\s*\(?([A-H])\)?\s*\*\*'}
+      - {kind: last_capital_letter, max_option: H}
+  metric: accuracy
+  chance_level: 0.25      # four options (a handful of rows carry 3 or 5)
+  aggregate: [mean]
+
+reporting:
+  primary_metric: accuracy
+  also: [accuracy_chance_adjusted, extraction_failure_rate,
+         format_violation_rate, truncation_rate, cost_usd, latency_p95_ms]
+
+contamination: {canary: false, ngram_overlap_against: null, perturbations: [option_shuffle]}

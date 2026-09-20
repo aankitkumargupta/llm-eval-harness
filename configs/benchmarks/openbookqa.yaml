@@ -1,0 +1,43 @@
+# OpenBookQA: elementary science with an open book of core facts, four-way
+# multiple choice. Same choices/label shape as ARC, so the ARC adapter serves
+# it; the question field is named question_stem and the adapter accepts both.
+id: openbookqa
+version: 1
+family: multiple_choice
+task: direct
+
+source:
+  kind: hf
+  ref: allenai/openbookqa
+  config: main
+  split: test
+  checksum: "sha256:06fcd384c98ff461af1b5bdc77f7f147578eafb2a142a73326f8705215a28f8c"
+  licence: Apache-2.0
+  commercial_use: true
+  citation: "Mihaylov et al., 2018: Can a Suit of Armor Conduct Electricity?"
+
+sampling: {limit: null, seed: 1729, stratify_by: "", samples_per_item: 1}
+
+prompt:
+  template: ""
+  few_shot: {n: 0, selection: fixed, pool_split: train}
+  system: null
+  decoding: {temperature: 0.0, max_tokens: 512, top_p: 1.0}
+
+scoring:
+  mode: generative
+  extraction:
+    chain:
+      - {kind: regex, pattern: 'Answer:\s*\(?([A-D])\)?'}
+      - {kind: regex, pattern: '\*\*\s*\(?([A-D])\)?\s*\*\*'}
+      - {kind: last_capital_letter, max_option: D}
+  metric: accuracy
+  chance_level: 0.25
+  aggregate: [mean]
+
+reporting:
+  primary_metric: accuracy
+  also: [accuracy_chance_adjusted, extraction_failure_rate,
+         format_violation_rate, truncation_rate, cost_usd, latency_p95_ms]
+
+contamination: {canary: false, ngram_overlap_against: null, perturbations: [option_shuffle]}

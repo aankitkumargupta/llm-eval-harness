@@ -1,0 +1,48 @@
+# TruthfulQA, multiple-choice form (mc1 targets): one correct option among
+# four to thirteen, on questions written to elicit common misconceptions.
+# The raw data lists the correct option FIRST in every item, so the adapter
+# shuffles option order deterministically from (seed, item index) before
+# prompting; without that any model scores 100% by always answering A.
+id: truthfulqa_mc
+version: 1
+family: multiple_choice
+task: direct
+
+source:
+  kind: hf
+  ref: truthfulqa/truthful_qa
+  config: multiple_choice
+  split: validation
+  checksum: "sha256:66355ab0ae984f4acd681fe8f6f0e2487b1b5f3d9292c69db7195dd71d1e672f"
+  licence: Apache-2.0
+  commercial_use: true
+  citation: "Lin et al., 2022: TruthfulQA, Measuring How Models Mimic Human Falsehoods"
+
+sampling: {limit: null, seed: 1729, stratify_by: "", samples_per_item: 1}
+
+prompt:
+  template: ""
+  few_shot: {n: 0, selection: fixed, pool_split: validation}
+  system: null
+  decoding: {temperature: 0.0, max_tokens: 512, top_p: 1.0}
+
+scoring:
+  mode: generative
+  extraction:
+    chain:
+      - {kind: regex, pattern: 'Answer:\s*\(?([A-M])\)?'}
+      - {kind: regex, pattern: '\*\*\s*\(?([A-M])\)?\s*\*\*'}
+      - {kind: last_capital_letter, max_option: M}
+  metric: accuracy
+  # Options vary per item (2 to 13). The chance level is the mean of
+  # 1/options over the 817-item split, measured from the fetched data on
+  # 2026-09-20 and pinned by tests/bench/test_truthfulqa_mc.py.
+  chance_level: 0.226
+  aggregate: [mean]
+
+reporting:
+  primary_metric: accuracy
+  also: [accuracy_chance_adjusted, extraction_failure_rate,
+         format_violation_rate, truncation_rate, cost_usd, latency_p95_ms]
+
+contamination: {canary: false, ngram_overlap_against: null, perturbations: [option_shuffle]}

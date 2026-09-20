@@ -3,8 +3,8 @@ Loaders that turn on-disk corpus/evalset files into typed objects.
 
 Formats (both JSONL, one record per line):
 
-  corpus.jsonl  — {"doc_id": "...", "text": "...", "source_uri": "..."}
-  evalset.jsonl — {"item_id": "...", "query": "...", "item_type": "answerable",
+  corpus.jsonl, {"doc_id": "...", "text": "...", "source_uri": "..."}
+  evalset.jsonl, {"item_id": "...", "query": "...", "item_type": "answerable",
                    "gold_answer": "...", "gold_passage_ids": ["docA#3"],
                    "history": [["user","..."],["assistant","..."]],
                    "human_label": 1.0, "meta": {}}
@@ -60,7 +60,7 @@ def load_corpus(path: str) -> Iterator[Document]:
 def load_evalset(path: str, strict: bool = True) -> list[EvalItem]:
     """Load eval items, validating as we go.
 
-    `strict=False` skips malformed lines instead of raising — useful when
+    `strict=False` skips malformed lines instead of raising, useful when
     salvaging a hand-edited file, but it silently shrinks your evalset, so the
     default is to fail loudly.
     """
@@ -92,7 +92,7 @@ def load_evalset(path: str, strict: bool = True) -> list[EvalItem]:
                 continue
             if item_id in seen_ids:
                 # Duplicate ids break the paired significance tests, which join
-                # two models' rows on item_id — a duplicate silently pairs the
+                # two models' rows on item_id, a duplicate silently pairs the
                 # wrong answers together.
                 if strict:
                     raise DatasetError(
@@ -185,14 +185,14 @@ def dataset_stats(items: list[EvalItem], min_items: int = 30,
       * too few items to separate models (wide CIs, unstable rankings)
       * no gold passages, so every retrieval metric will be blank
       * duplicate questions, which inflate apparent sample size while adding no
-        information — 200 items of which 80 are dupes is a 120-item benchmark
+        information, 200 items of which 80 are dupes is a 120-item benchmark
         reporting 200-item confidence
       * no unanswerable items, so abstention is never tested and a model that
         fabricates confidently scores identically to one that refuses honestly
 
     `task` gates the RAG-only warnings. Telling a classification profile that it
     has no gold passages is noise, and a validator that cries wolf is one people
-    stop reading — which costs you the warnings that do matter.
+    stop reading, which costs you the warnings that do matter.
     """
     is_rag = task == "rag"
     stats = DatasetStats(n_items=len(items))

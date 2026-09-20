@@ -2,7 +2,7 @@
 The default set of screens, assembled into a registry.
 
 This is the one place that knows which pages exist. Adding a screen is a class
-plus a line here — the shell, the nav and every other page are untouched, which
+plus a line here, the shell, the nav and every other page are untouched, which
 is the Open/Closed property the registry exists to provide.
 
 Order is the rail order, and it follows the journey: what you decided, the

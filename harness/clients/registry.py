@@ -10,7 +10,7 @@ anywhere above this file.
 **Route capabilities to different providers.** This is the part that makes a
 genuinely multi-provider run possible. Anthropic serves no embeddings; Groq
 serves no embeddings and no rerank. Without routing, "benchmark Claude against
-Llama on our RAG corpus" is simply impossible — you'd have nothing to build the
+Llama on our RAG corpus" is simply impossible, you'd have nothing to build the
 index with. `RoutedClient` sends generation wherever the model lives while
 keeping embeddings and reranking on a provider that supports them, so the
 *retrieval apparatus stays fixed* across every model under test. That fixed
@@ -42,7 +42,7 @@ from .base import (
 from .cost import CostMeter
 from .resilience import RetryPolicy
 
-# `provider:model` — chosen over "/" because model ids contain slashes
+# `provider:model`, chosen over "/" because model ids contain slashes
 # ("openai/gpt-oss-120b") and a slash split would be ambiguous.
 PROVIDER_SEP = ":"
 
@@ -54,11 +54,13 @@ def split_model_ref(ref: str, default_provider: str = "together") -> tuple[str, 
     contain a colon too, so a naive split would route them to a provider called
     "llama3.1" and fail with a baffling error.
     """
-    from .endpoints import PROVIDER_ENDPOINTS
+    from .endpoints import all_providers
 
     if PROVIDER_SEP in ref:
         head, rest = ref.split(PROVIDER_SEP, 1)
-        known = set(PROVIDER_ENDPOINTS) | {"anthropic"}
+        # Every provider the harness knows, OpenAI-shaped or not, from the one
+        # table, so adding an adapter is one entry there, not an edit here.
+        known = set(all_providers())
         if head in known:
             return head, rest
     return default_provider, ref
@@ -81,9 +83,18 @@ def build_client(
     common = dict(api_key=api_key, timeout=timeout, retry=retry,
                   rate_limit=rate_limit, meter=meter, pricing=pricing,
                   stream_for_ttft=stream_for_ttft)
+    if provider == "fake":
+        from .fake_client import FakeClient
+        return FakeClient(provider="fake", meter=meter, pricing=pricing,
+                          **kwargs)
+
     if provider == "anthropic":
         from .anthropic_client import AnthropicClient
         return AnthropicClient(base_url=base_url, **common, **kwargs)
+
+    if provider == "local":
+        from .local_embed import LocalEmbedClient
+        return LocalEmbedClient(meter=meter, pricing=pricing, **kwargs)
 
     from .openai_compatible import OpenAICompatibleClient
     return OpenAICompatibleClient(provider=provider, base_url=base_url,
@@ -104,7 +115,7 @@ class RoutedClient:
     """An `LLMClient` that dispatches per model string, with fixed side-channels.
 
     Generation follows the model's own `provider:` prefix. Embeddings, reranking
-    and judging are pinned to explicitly chosen providers — they are part of the
+    and judging are pinned to explicitly chosen providers, they are part of the
     apparatus, not the variable under test, so they must not drift when the
     model under test changes.
     """
@@ -208,7 +219,7 @@ class RoutedClient:
                         f"Embedding model '{embedding_model}' routes to provider "
                         f"'{provider}', which serves no embeddings. Set "
                         f"`embedding_provider` in configs/models.yaml.")
-            except Exception as e:  # noqa: BLE001 — surface, don't crash preflight
+            except Exception as e:  # noqa: BLE001, surface, don't crash preflight
                 problems.append(f"Cannot reach embedding provider '{provider}': {e}")
 
         if rerank_model:
@@ -237,7 +248,7 @@ def build_from_config(models_cfg: dict, *, meter: CostMeter | None = None,
                       stream_for_ttft: bool = False) -> RoutedClient:
     """Build a `RoutedClient` from the `providers:` block of configs/models.yaml.
 
-    Absent that block, everything defaults to Together — so an existing config
+    Absent that block, everything defaults to Together, so an existing config
     keeps working untouched.
     """
     default_provider = models_cfg.get("default_provider", "together")

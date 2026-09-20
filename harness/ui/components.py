@@ -3,14 +3,14 @@ Non-chart UI pieces.
 
 Every one of these exists because the data's job is *not* a chart:
 
-  stat_tiles     — a handful of headline numbers. A grouped bar chart of five
+  stat_tiles, a handful of headline numbers. A grouped bar chart of five
                    unrelated quantities is a classic way to make simple numbers
                    unreadable.
-  hero           — the one answer the page leads with. The recommendation is a
+  hero, the one answer the page leads with. The recommendation is a
                    name, not a distribution, so it gets a hero figure.
-  budget_meter   — a single ratio against a limit. A meter, never a two-slice pie.
-  pipeline       — where you are in a linear workflow, and what is blocked.
-  verdict_lines  — significance results as sentences, because "p=0.03" is not
+  budget_meter, a single ratio against a limit. A meter, never a two-slice pie.
+  pipeline, where you are in a linear workflow, and what is blocked.
+  verdict_lines, significance results as sentences, because "p=0.03" is not
                    what a reader needs to act on.
 
 All render through `st.markdown(..., unsafe_allow_html=True)` against the CSS in
@@ -38,7 +38,7 @@ class Tile:
     label: str
     value: str
     note: str = ""
-    # "good" | "warning" | "critical" | "" — status only, never decoration.
+    # "good" | "warning" | "critical" | "", status only, never decoration.
     status: str = ""
 
 
@@ -63,7 +63,7 @@ def hero(label: str, value: str, note: str = "", ok: bool = True) -> None:
     """The single answer the page exists to give.
 
     Used for the model recommendation. It is a name, so it is a hero figure
-    rather than a chart — and it goes at the top, because a reader who scrolls
+    rather than a chart, and it goes at the top, because a reader who scrolls
     past four tables to find it has been failed by the layout.
     """
     cls = "hx-hero" if ok else "hx-hero none"
@@ -111,7 +111,7 @@ def budget_meter(spent: float, limit: float) -> None:
 def pipeline(steps: list[tuple[str, bool]], active: int = -1) -> None:
     """Where you are in the workflow.
 
-    The app's flow is linear and stateful — you cannot run before ingesting,
+    The app's flow is linear and stateful, you cannot run before ingesting,
     and cannot read results before running. Without this, a disabled button is
     the only signal, and it never says *why* it is disabled.
 
@@ -138,7 +138,7 @@ def pipeline(steps: list[tuple[str, bool]], active: int = -1) -> None:
 def verdict_lines(rows: list[tuple[bool, str]]) -> None:
     """Significance results as sentences with a status tag.
 
-    The tag is a label, not a bare colour — a reader who cannot distinguish the
+    The tag is a label, not a bare colour, a reader who cannot distinguish the
     green still reads the word. That is the rule for every status cue here.
     """
     for significant, text in rows:
@@ -169,7 +169,7 @@ def section(title: str, explanation: str = "") -> None:
 def feature_cards(items, columns: int = 2) -> None:
     """A grid of capability cards: name, one line of why it matters.
 
-    Cards rather than a bulleted list because the descriptions are the point —
+    Cards rather than a bulleted list because the descriptions are the point,
     a bare list of 27 metric names tells a reader nothing they can act on, and
     a table of them is a wall. Each card carries a name and a sentence.
     """
@@ -191,7 +191,7 @@ def feature_cards(items, columns: int = 2) -> None:
 
 
 def chips(labels, tone: str = "") -> None:
-    """A compact inline set — for short enumerations like retrieval modes."""
+    """A compact inline set, for short enumerations like retrieval modes."""
     if not labels:
         return
     body = "".join(f'<span class="hx-chip {_esc(tone)}">{_esc(label)}</span>'
@@ -229,7 +229,7 @@ def capability_matrix(providers) -> None:
 
 
 def kv_rows(pairs) -> None:
-    """Label/description rows — for lists where the description carries the weight."""
+    """Label/description rows, for lists where the description carries the weight."""
     if not pairs:
         return
     body = "".join(

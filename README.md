@@ -1,10 +1,10 @@
 # Multi-Model LLM Evaluation Harness
 
-A model-agnostic benchmarking suite that ranks LLMs for a specific workload against **accuracy, cost, latency, robustness and safety** — and then tells you whether the differences it found are real.
+A model-agnostic benchmarking suite that ranks LLMs for a specific workload against **accuracy, cost, latency, robustness and safety**, and then tells you whether the differences it found are real.
 
-Upload a folder of PDFs and a spreadsheet of question/answer pairs, pick the models to compare, and get a leaderboard, a cost/latency Pareto frontier, statistical significance tests, adversarial probe results, and a constrained recommendation — from a browser UI, the command line, or a CI pipeline.
+Upload a folder of PDFs and a spreadsheet of question/answer pairs, pick the models to compare, and get a leaderboard, a cost/latency Pareto frontier, statistical significance tests, adversarial probe results, and a constrained recommendation, from a browser UI, the command line, or a CI pipeline.
 
-It runs against **any provider**: Together, OpenAI, Anthropic, Groq, Fireworks, OpenRouter, or a model you host yourself with vLLM / Ollama / LM Studio. The harness is network-bound and disk-bound rather than compute-bound, so it runs comfortably on an 8 GB machine — no model weights are ever loaded locally.
+It runs against **any provider**: Together, OpenAI, Anthropic, Groq, Fireworks, OpenRouter, or a model you host yourself with vLLM / Ollama / LM Studio. The harness is network-bound and disk-bound rather than compute-bound, so it runs comfortably on an 8 GB machine, no model weights are ever loaded locally.
 
 ---
 
@@ -25,6 +25,7 @@ It runs against **any provider**: Together, OpenAI, Anthropic, Groq, Fireworks, 
   - [Where things get written](#where-things-get-written)
   - [Local run gotchas](#local-run-gotchas)
 - [The eight questions it answers](#the-eight-questions-it-answers)
+- [Case studies: Indian-government use cases](#case-studies-indian-government-use-cases)
 - [Adversarial probes](#adversarial-probes)
 - [Statistical significance](#statistical-significance)
 - [The decision layer](#the-decision-layer)
@@ -49,7 +50,7 @@ It runs against **any provider**: Together, OpenAI, Anthropic, Groq, Fireworks, 
 Most internal LLM evaluations fail in one of four ways, and none of them look like failure:
 
 1. **They measure noise.** Someone runs 40 questions, sees 0.82 against 0.78, and ships. On 40 items that gap is comfortably inside the margin of error, and half the time it would flip on a re-run.
-2. **They under-count cost.** Judge calls, embeddings and reranking are billed but not reported, so "cost per query" is a fraction of the real figure — and since cost is weighted negatively in any composite, the *ranking* is wrong too, not just the dollar amount.
+2. **They under-count cost.** Judge calls, embeddings and reranking are billed but not reported, so "cost per query" is a fraction of the real figure, and since cost is weighted negatively in any composite, the *ranking* is wrong too, not just the dollar amount.
 3. **They never test the failure modes that matter.** Accuracy says nothing about whether a model will obey an instruction hidden in a retrieved document, fabricate an answer it should have refused, or leak data.
 4. **They answer the wrong question.** A leaderboard says which model scored highest. Nobody gets to make that decision. The real one is *"cheapest model that clears our bar at our volume."*
 
@@ -59,17 +60,17 @@ This harness is built around those four gaps.
 
 ## Features
 
-- **Provider-agnostic** — Together, OpenAI, Anthropic, Groq, Fireworks, DeepInfra, OpenRouter, and self-hosted vLLM / Ollama / LM Studio. Mix vendors in one matrix with a `provider:` prefix.
-- **Three interfaces** — a full Streamlit app (upload → probe → run → decide), a read-only dashboard, and a scriptable CLI that exits non-zero on regressions.
-- **Statistical significance** — paired bootstrap and exact McNemar tests, Holm-Bonferroni corrected, plus a power report that tells you how many more questions you need.
-- **Adversarial probes** — prompt injection, abstention, retrieval noise, paraphrase consistency and lost-in-the-middle, generated automatically from your own evalset.
-- **A decision layer** — constraint-based model selection, production cost projection, and the price of each extra quality point.
-- **CI regression gating** — `main.py gate` fails the build when quality drops or cost rises, and only fires on differences that are statistically real.
-- **Honest cost** — generation, judge, embedding and rerank billed separately from real usage blocks, with a hard budget ceiling that aborts a run cleanly.
-- **Reliable** — jittered retries, optional rate limiting, incremental checkpointing and resume, so a six-hour run survives a rate limit at hour three.
-- **Baseline + adapted passes** — measure out-of-the-box quality *and* how much each model improves under an equal, automatic tuning budget.
-- **Hybrid retrieval** — dense, sparse (BM25) and RRF-fused hybrid from one Qdrant index.
-- **Non-RAG tasks too** — classification and direct prompting reuse the whole apparatus without a vector store.
+- **Provider-agnostic**: Together, OpenAI, Anthropic, Groq, Fireworks, DeepInfra, OpenRouter, and self-hosted vLLM / Ollama / LM Studio. Mix vendors in one matrix with a `provider:` prefix.
+- **Three interfaces**, a full Streamlit app (upload → probe → run → decide), a read-only dashboard, and a scriptable CLI that exits non-zero on regressions.
+- **Statistical significance**, paired bootstrap and exact McNemar tests, Holm-Bonferroni corrected, plus a power report that tells you how many more questions you need.
+- **Adversarial probes**, prompt injection, abstention, retrieval noise, paraphrase consistency and lost-in-the-middle, generated automatically from your own evalset.
+- **A decision layer**, constraint-based model selection, production cost projection, and the price of each extra quality point.
+- **CI regression gating**: `main.py gate` fails the build when quality drops or cost rises, and only fires on differences that are statistically real.
+- **Honest cost**, generation, judge, embedding and rerank billed separately from real usage blocks, with a hard budget ceiling that aborts a run cleanly.
+- **Reliable**, jittered retries, optional rate limiting, incremental checkpointing and resume, so a six-hour run survives a rate limit at hour three.
+- **Baseline + adapted passes**, measure out-of-the-box quality *and* how much each model improves under an equal, automatic tuning budget.
+- **Hybrid retrieval**, dense, sparse (BM25) and RRF-fused hybrid from one Qdrant index.
+- **Non-RAG tasks too**, classification and direct prompting reuse the whole apparatus without a vector store.
 
 ---
 
@@ -77,19 +78,19 @@ This harness is built around those four gaps.
 
 Metrics are grouped by the subsystem that owns them. A profile activates only the subset relevant to its workload.
 
-**Retrieval quality** — hit-rate@k, MRR, NDCG@k, context recall, **context precision**, **average precision**, rerank lift (split into hit-rate delta vs. rank delta)
+**Retrieval quality**, hit-rate@k, MRR, NDCG@k, context recall, **context precision**, **average precision**, rerank lift (split into hit-rate delta vs. rank delta)
 
-**Answer quality** — accuracy (`exact` / `contains` / `numeric` / **`token_f1`** / LLM-judge), faithfulness, answer relevance, completeness, **judge disagreement**
+**Answer quality**, accuracy (`exact` / `contains` / `numeric` / **`token_f1`** / LLM-judge), faithfulness, answer relevance, completeness, **judge disagreement**
 
-**Citations** — pointer validity, supporting validity, **citation density**, **citation recall**
+**Citations**, pointer validity, supporting validity, **citation density**, **citation recall**
 
-**Robustness & security** — **prompt-injection resistance**, abstention correctness, **PII leakage**, **paraphrase consistency**, lost-in-the-middle
+**Robustness & security**, **prompt-injection resistance**, abstention correctness, **PII leakage**, **paraphrase consistency**, lost-in-the-middle
 
-**Efficiency** — p50/p95 latency, **TTFT**, tokens, and cost split into **generation / judge / embedding / rerank**
+**Efficiency**, p50/p95 latency, **TTFT**, tokens, and cost split into **generation / judge / embedding / rerank**
 
-**Diagnostics** — **error attribution by cause**, **truncation rate**, cache hit rate
+**Diagnostics**, **error attribution by cause**, **truncation rate**, cache hit rate
 
-**Cross-model analysis** — weighted composite, tuning gain, Pareto frontier, Elo + head-to-head win rates, bootstrap CIs, **paired significance tests**, **power analysis**, **judge calibration against human labels**
+**Cross-model analysis**, weighted composite, tuning gain, Pareto frontier, Elo + head-to-head win rates, bootstrap CIs, **paired significance tests**, **power analysis**, **judge calibration against human labels**
 
 Bold entries are new or were previously declared but never computed.
 
@@ -114,7 +115,7 @@ Upload PDFs + Q&A  ->  prepare_dataset  ->  corpus.jsonl + evalset.jsonl
         report | compare | decide | arena | gate | html
 ```
 
-The load-bearing contracts are **`TraceRow`** (one flat row per eval item — the boundary between running and analysis) and the **provider protocols** (the only place that touches the network).
+The load-bearing contracts are **`TraceRow`** (one flat row per eval item, the boundary between running and analysis) and the **provider protocols** (the only place that touches the network).
 
 ### Extension points
 
@@ -130,26 +131,26 @@ The structure follows SOLID where SOLID earns its keep. Each seam below exists b
 | Change caching | Implement `KeyValueCache` | everything above it |
 | Add a UI screen | Write a `Page` in `harness/ui/screens/`, add it to `default_registry()` | `app.py` and every other screen |
 
-**Interface segregation is the one that fixed a real bug.** Provider capability used to be a boolean flag on a fat four-method interface: every adapter implemented `embed` and `rerank`, and the ones that couldn't just raised. That made `isinstance(client, Embedder)` answer `True` for a client that can never embed, and left the flag as the only real signal — a flag that shipped *wrong* for OpenRouter, which was declared embedding-incapable while its adapter handled embeddings fine. The capability protocols are now separate, adapters omit what they genuinely cannot do, and `supports()` requires the method and the declaration to agree, so the two cannot drift apart again.
+**Interface segregation is the one that fixed a real bug.** Provider capability used to be a boolean flag on a fat four-method interface: every adapter implemented `embed` and `rerank`, and the ones that couldn't just raised. That made `isinstance(client, Embedder)` answer `True` for a client that can never embed, and left the flag as the only real signal, a flag that shipped *wrong* for OpenRouter, which was declared embedding-incapable while its adapter handled embeddings fine. The capability protocols are now separate, adapters omit what they genuinely cannot do, and `supports()` requires the method and the declaration to agree, so the two cannot drift apart again.
 
 Responsibilities are split so each piece has one reason to change:
 
 ```
 orchestrator.py   assembles collaborators; delegates  (wiring only)
 passes.py         BaselinePass / AdaptedPass / LatencyPass
-collector.py      RowCollector — buffering, checkpointing, progress
-arena.py          ArenaService — pairwise judging over stored answers
-runner.py         run_item — one item through the pipeline
+collector.py      RowCollector, buffering, checkpointing, progress
+arena.py          ArenaService, pairwise judging over stored answers
+runner.py         run_item, one item through the pipeline
 eval/scoring.py   the metric registry
 ```
 
-`tests/test_solid.py` pins these seams. The load-bearing one defines a brand-new scorer *inside the test file* and asserts it participates fully — Open/Closed is a claim about what a future change costs, so the only honest check is to make that change and confirm nothing else moved.
+`tests/test_solid.py` pins these seams. The load-bearing one defines a brand-new scorer *inside the test file* and asserts it participates fully: Open/Closed is a claim about what a future change costs, so the only honest check is to make that change and confirm nothing else moved.
 
 ---
 
 ## Running it locally
 
-Everything runs on one machine. There is **no Docker requirement, no GPU, and no model weights are downloaded** — the harness calls hosted APIs (or a local server you already run) and does the retrieval, scoring and statistics itself.
+Everything runs on one machine. There is **no Docker requirement, no GPU, and no model weights are downloaded**, the harness calls hosted APIs (or a local server you already run) and does the retrieval, scoring and statistics itself.
 
 ### 1. Prerequisites
 
@@ -159,7 +160,7 @@ Everything runs on one machine. There is **no Docker requirement, no GPU, and no
 | **RAM** | ~2-3 GB free during a run |
 | **Disk** | ~1 GB for dependencies, plus your corpus and traces |
 | **Docker** | **Not required.** Qdrant runs embedded, as a local folder |
-| **API key** | One provider key — Together, OpenAI, Anthropic, Groq, … — *or* a local server (Ollama / vLLM / LM Studio) and no key at all |
+| **API key** | One provider key: Together, OpenAI, Anthropic, Groq, …, *or* a local server (Ollama / vLLM / LM Studio) and no key at all |
 
 ### 2. Install
 
@@ -232,11 +233,11 @@ python main.py estimate --profile regulated_qa
 python main.py probes --profile regulated_qa --out probes.jsonl
 ```
 
-`validate` checks your profile config, dataset quality and gold-passage labels; `estimate` forecasts a run's cost including judge calls; `probes` generates adversarial eval items. Until you do step 4, `validate` will also report *"Cannot construct provider 'together': No API key"* — that is its pre-flight check working correctly, not an install problem.
+`validate` checks your profile config, dataset quality and gold-passage labels; `estimate` forecasts a run's cost including judge calls; `probes` generates adversarial eval items. Until you do step 4, `validate` will also report *"Cannot construct provider 'together': No API key"*, that is its pre-flight check working correctly, not an install problem.
 
 ### 4. Add a provider API key
 
-The shipped config is set up for **Together AI** and **OpenRouter**. Either one alone runs everything, including RAG — both serve embeddings, so either can build the vector index.
+The shipped config is set up for **Together AI** and **OpenRouter**. Either one alone runs everything, including RAG, both serve embeddings, so either can build the vector index.
 
 Create a `.env` file in the project root (it is gitignored) with whichever keys you have:
 
@@ -257,13 +258,13 @@ On Windows PowerShell:
 $env:TOGETHER_API_KEY = "your_key_here"
 ```
 
-With both keys set you can compare cheap open-weight models against frontier ones in a single run — uncomment the `openrouter:` entries in `configs/models.yaml`. With only one key, everything still works:
+With both keys set you can compare cheap open-weight models against frontier ones in a single run, uncomment the `openrouter:` entries in `configs/models.yaml`. With only one key, everything still works:
 
 | You have | What to change |
 |---|---|
-| Together only | Nothing — it is the shipped default. |
+| Together only | Nothing, it is the shipped default. |
 | OpenRouter only | Set `default_provider: openrouter` and the three `*_provider` keys, and point the profile's `embedding_model` at e.g. `baai/bge-m3`. The full block is at the bottom of `configs/models.yaml`. |
-| Both | Nothing — add `openrouter:`-prefixed models to the `models:` list whenever you want them. |
+| Both | Nothing, add `openrouter:`-prefixed models to the `models:` list whenever you want them. |
 
 Whichever you choose, confirm the routing before spending anything:
 
@@ -271,7 +272,7 @@ Whichever you choose, confirm the routing before spending anything:
 python main.py validate --profile regulated_qa
 ```
 
-It constructs every provider, checks each capability you rely on, and names any problem — a missing key, a model routed to a provider that cannot serve it, a model with no price — before the first billable call.
+It constructs every provider, checks each capability you rely on, and names any problem, a missing key, a model routed to a provider that cannot serve it, a model with no price, before the first billable call.
 
 Other providers use `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GROQ_API_KEY`, `FIREWORKS_API_KEY`, `DEEPINFRA_API_KEY`. See [Multi-provider setup](#multi-provider-setup) to mix several in one run.
 
@@ -298,7 +299,7 @@ python main.py validate --profile regulated_qa
 
 The repo ships a tiny `regulated_qa` dataset (4 documents, 5 questions) so you can exercise the whole pipeline in about a minute for a few cents.
 
-**First switch Qdrant to embedded mode** so nothing external is needed — uncomment this line in `configs/run.yaml`:
+**First switch Qdrant to embedded mode** so nothing external is needed, uncomment this line in `configs/run.yaml`:
 
 ```yaml
 qdrant_path: "workspace/qdrant"
@@ -330,7 +331,7 @@ python main.py report --profile regulated_qa
 python main.py html --profile regulated_qa --out report.html
 ```
 
-`--budget 1.00` is a hard ceiling: the run aborts cleanly if measured spend crosses it, keeping every row already written. Open `report.html` in any browser — it is a single self-contained file with no external assets.
+`--budget 1.00` is a hard ceiling: the run aborts cleanly if measured spend crosses it, keeping every row already written. Open `report.html` in any browser, it is a single self-contained file with no external assets.
 
 > **The demo dataset is deliberately tiny**, so `report` will tell you the sample is too small to rank models confidently. That is the harness working as intended: with 5 questions almost nothing is statistically detectable. Use it to confirm the plumbing, then point a profile at real data.
 
@@ -350,17 +351,17 @@ streamlit run app.py
 
 Opens at `http://localhost:8501`. The app always uses **embedded Qdrant** under `workspace/`, so it needs no configuration and no Docker.
 
-A **persistent sidebar** carries the navigation, grouped by what each screen is for. Only the selected screen runs — Streamlit executes every tab body on every rerun, so the previous tabbed version did the work of six screens to show one.
+A **persistent sidebar** carries the navigation, grouped by what each screen is for. Only the selected screen runs: Streamlit executes every tab body on every rerun, so the previous tabbed version did the work of six screens to show one.
 
-- **Sidebar** — navigation, API key, which providers are actually reachable, a **budget meter**, and the active dataset.
-- **Capabilities** — every feature the platform has, *discovered from the installed code* rather than written down: the provider capability matrix, all 27 metrics with what each one catches, the probe families, passes, task types and CLI commands, plus what this particular install has configured. Because it is introspected, it cannot drift out of date.
-- **Overview** — the recommendation as a hero figure, headline KPIs, the cost/quality frontier, significance verdicts, projected spend, latency and safety.
-- **Reports** — every metric, tuning gain, diagnostics, judge calibration, and the HTML/CSV export.
-- **Data** — upload PDFs and a Q&A spreadsheet, then **Build dataset** → **Ingest**.
-- **Probes** — generate injection / abstention / noise / paraphrase items. Free and instant.
-- **Run** — pick models, read the cost estimate *including judge calls*, run in the background with a live progress bar.
+- **Sidebar**, navigation, API key, which providers are actually reachable, a **budget meter**, and the active dataset.
+- **Capabilities**, every feature the platform has, *discovered from the installed code* rather than written down: the provider capability matrix, all 27 metrics with what each one catches, the probe families, passes, task types and CLI commands, plus what this particular install has configured. Because it is introspected, it cannot drift out of date.
+- **Overview**, the recommendation as a hero figure, headline KPIs, the cost/quality frontier, significance verdicts, projected spend, latency and safety.
+- **Reports**, every metric, tuning gain, diagnostics, judge calibration, and the HTML/CSV export.
+- **Data**, upload PDFs and a Q&A spreadsheet, then **Build dataset** → **Ingest**.
+- **Probes**, generate injection / abstention / noise / paraphrase items. Free and instant.
+- **Run**, pick models, read the cost estimate *including judge calls*, run in the background with a live progress bar.
 
-The Results tab leads with the answer rather than the leaderboard. Set your quality bar with one slider and it tells you the cheapest model that clears it, what that costs per month at your volume, and — when nothing qualifies — exactly what each model missed by.
+The Results tab leads with the answer rather than the leaderboard. Set your quality bar with one slider and it tells you the cheapest model that clears it, what that costs per month at your volume, and, when nothing qualifies, exactly what each model missed by.
 
 There is also a read-only dashboard over an existing trace store. It makes no API calls, so it is safe to leave open and refresh while a run completes:
 
@@ -375,12 +376,12 @@ Both surfaces share one design system (`harness/ui/`), so they cannot drift apar
 | Chart | Encoding | Why |
 |---|---|---|
 | Cost/quality frontier | Accent blue for the frontier, gray for everything else | The frontier is the decision; the rest is context. Scatter is an all-pairs form where more than three hues cannot clear the colour-vision floors, so a colour-per-model scale would be unreadable, not just busy. |
-| Significance matrix | Blue ↔ red diverging, neutral gray midpoint | Direction is the point. **Comparisons that failed the correction are forced to the neutral midpoint** — an uncorrected heatmap of raw deltas shows a confident pattern of colour where the data supports none of it. Shown only at 4+ models; below that the sentences are clearer. |
+| Significance matrix | Blue ↔ red diverging, neutral gray midpoint | Direction is the point. **Comparisons that failed the correction are forced to the neutral midpoint**, an uncorrected heatmap of raw deltas shows a confident pattern of colour where the data supports none of it. Shown only at 4+ models; below that the sentences are clearer. |
 | Metric and cost bars | One colour for every bar | Colouring bars darker-where-bigger would encode length twice and burn the only free channel on information the bar already shows. |
 | p50 / p95 latency | Two named series with a legend | Both are milliseconds on **one** axis. A second y-scale would invent a relationship the data doesn't contain. |
 | All-identical metrics | A stat tile, not a chart | Three bars of zero is an empty plot pretending to be a finding. |
 
-The app ships in a dark **Midnight** palette — a blue-tinted near-black with raised cards — matching the dashboard style it is built to. The palette was checked with a colour-vision validator rather than by eye, and re-validated against the navy surface rather than assumed to carry over from the neutral dark one: all-pairs CVD ΔE 9.4, normal-vision 20.9, every slot ≥3:1 contrast. Switch it in `.streamlit/config.toml`:
+The app ships in a dark **Midnight** palette, a blue-tinted near-black with raised cards, matching the dashboard style it is built to. The palette was checked with a colour-vision validator rather than by eye, and re-validated against the navy surface rather than assumed to carry over from the neutral dark one: all-pairs CVD ΔE 9.4, normal-vision 20.9, every slot ≥3:1 contrast. Switch it in `.streamlit/config.toml`:
 
 ```toml
 base = "light"
@@ -390,7 +391,9 @@ The charts follow automatically; `harness/ui/theme.py` reads the configured base
 
 ### 7. Run on your own data
 
-Turn PDFs and a Q&A spreadsheet into the JSONL the harness reads, with gold passages auto-labeled:
+**Start in the browser.** The Evaluate screen (second button in the task bar) walks a new user through it: pick the kind of task (label, generate, answer from documents, or a public benchmark), see the data format with sample rows you can copy or download, have the profile written from a few choices and validated as you type, upload your own JSONL (checked line by line before anything is written), then follow the numbered screens: Preflight, Retrieval and Probes for RAG, Profile run, Profile report, Decide, Saved reports. The same commands are printed beside each step.
+
+**Or from the terminal.** Turn PDFs and a Q&A spreadsheet into the JSONL the harness reads, with gold passages auto-labeled:
 
 ```bash
 python prepare_dataset.py --pdf-dir ./my_pdfs --qa-file ./my_questions.xlsx --out-dir ./data/my_eval --question-col Question --answer-col Answer --chunk-size 200 --overlap 40
@@ -424,7 +427,7 @@ python main.py run --profile my_eval --budget 25.00
 python main.py report --profile my_eval
 ```
 
-Already have JSONL? Skip `prepare_dataset.py` — see [Data format](#data-format).
+Already have JSONL? Skip `prepare_dataset.py`, see [Data format](#data-format).
 
 A run that dies partway can be resumed rather than restarted, so nothing already paid for is lost:
 
@@ -442,9 +445,9 @@ Everything the harness creates stays inside the project and is gitignored:
 
 | Path | What | Safe to delete? |
 |---|---|---|
-| `workspace/` | UI-created datasets, embedded Qdrant index, traces, cache | Yes — resets the app entirely |
+| `workspace/` | UI-created datasets, embedded Qdrant index, traces, cache | Yes, resets the app entirely |
 | `runs/traces/` | CLI trace store (append-only Parquet parts) | Yes, but you lose past results |
-| `.cache/` | Cached model, judge and embedding responses | Yes — but re-runs will re-bill |
+| `.cache/` | Cached model, judge and embedding responses | Yes, but re-runs will re-bill |
 | `report.html` | Generated report | Yes |
 
 `.cache/` is the one to be careful with: the cache is what makes re-reporting free and results reproducible.
@@ -464,7 +467,7 @@ rm -rf workspace runs .cache
 | `ModuleNotFoundError: harness` | The virtual environment isn't active, or you're not in the project root. `pytest` and `python main.py` both expect the repo root as the working directory. |
 | `No module named streamlit` | `pip install -r requirements.txt`, or `pip install -e ".[ui]"`. |
 | Lots of `rate_limit` errors | Lower `max_workers` in `run.yaml`, or set a per-provider `rate_limit` in `models.yaml`. Pacing is cheaper than backing off. |
-| Windows `UnicodeEncodeError` while printing a report | Shouldn't happen — the CLI forces UTF-8 output. If it does, set `PYTHONIOENCODING=utf-8` and please report it. |
+| Windows `UnicodeEncodeError` while printing a report | Shouldn't happen, the CLI forces UTF-8 output. If it does, set `PYTHONIOENCODING=utf-8` and please report it. |
 
 ---
 
@@ -483,9 +486,36 @@ rm -rf workspace runs .cache
 
 ---
 
+## Case studies: Indian-government use cases
+
+Five worked evaluations of language models on the everyday work of district
+and state offices, each with a fictional, illustrative dataset in English,
+Hindi and Hinglish, a profile, a write-up under `docs/case-studies/`, and a
+screen in the browser UI (Analyse, Case studies) that shows the newest run
+with its intervals, paired test and cost per correct answer.
+
+| profile | task | what it measures |
+|---|---|---|
+| `in_grievance_triage` | classify | routing citizen grievances to the department that acts first |
+| `in_notice_translation` | direct | translating public notices into Hindi; fidelity and native script kept apart |
+| `in_rti_drafting` | direct | drafting a Right to Information application from a citizen's situation |
+| `in_scheme_qa` | rag | answering scheme questions from the documents, in the citizen's language |
+| `in_statute_qa` | rag | answering RTI-framework questions with citations, from summaries of the Act |
+
+```bash
+python main.py validate --profile configs/profiles/in_scheme_qa.yaml
+python main.py ingest   --profile configs/profiles/in_scheme_qa.yaml     # RAG profiles only
+python main.py run      --profile configs/profiles/in_scheme_qa.yaml --budget 5
+python main.py report   --profile configs/profiles/in_scheme_qa.yaml
+```
+
+Every dataset is generated by a `build_dataset.py` under `data/<profile>/`
+and is the source of truth; nothing real is reproduced, and the RTI
+summaries are not the statutory text. See `docs/case-studies/README.md`.
+
 ## Adversarial probes
 
-**A RAG system's corpus is an attack surface.** Anything that can put text into your index — an uploaded PDF, a support ticket, a scraped page, a wiki anyone can edit — can put instructions in front of your model. The model cannot distinguish a retrieved passage from an operator instruction; they arrive as the same tokens.
+**A RAG system's corpus is an attack surface.** Anything that can put text into your index, an uploaded PDF, a support ticket, a scraped page, a wiki anyone can edit, can put instructions in front of your model. The model cannot distinguish a retrieved passage from an operator instruction; they arrive as the same tokens.
 
 ```bash
 python main.py probes --profile regulated_qa --append
@@ -497,17 +527,17 @@ This derives five probe families from questions you already have, so they test *
 |---|---|
 | `injection` | A hostile instruction planted in a retrieved passage, carrying a canary string. If the canary comes back, the model took orders from its data. |
 | `unanswerable` | A question the corpus provably cannot answer, phrased so retrieval still returns confident-looking passages. Does the model refuse, or invent a statute? |
-| `noise` | Distractor passages mixed into context. Does quality survive imperfect retrieval — the only kind there is in production? |
+| `noise` | Distractor passages mixed into context. Does quality survive imperfect retrieval, the only kind there is in production? |
 | `paraphrase` | The same question reworded. Users don't ask twice the same way; an answer that changes when they do is unreliable even when each individual answer looks fine. |
 | `positional` | The gold passage forced to the middle of a long context. Separates models that read their whole context from models that skim the ends. |
 
-Probe generation is deterministic given a seed, costs nothing, and needs no re-ingest — probes reuse the existing corpus.
+Probe generation is deterministic given a seed, costs nothing, and needs no re-ingest, probes reuse the existing corpus.
 
 ---
 
 ## Statistical significance
 
-The original harness reported a bootstrap confidence interval **per model**. That is the wrong interval for the decision being made: both models were evaluated on the **same items**, so the comparison is paired, and pairing removes item difficulty — usually the dominant source of variance — from the estimate.
+The original harness reported a bootstrap confidence interval **per model**. That is the wrong interval for the decision being made: both models were evaluated on the **same items**, so the comparison is paired, and pairing removes item difficulty, usually the dominant source of variance, from the estimate.
 
 ```bash
 python main.py compare --profile regulated_qa --metric accuracy
@@ -520,7 +550,7 @@ python main.py compare --profile regulated_qa --metric accuracy
 * = significant after Holm-Bonferroni correction
 ```
 
-- **Paired bootstrap** on per-item differences, or an **exact McNemar test** when the metric is binary — selected automatically.
+- **Paired bootstrap** on per-item differences, or an **exact McNemar test** when the metric is binary, selected automatically.
 - **Holm-Bonferroni correction**, because comparing 5 models is 10 tests, and at α=0.05 you'd expect a false winner ~40% of the time without it.
 - **Power analysis** that converts "add more questions" into a number:
 
@@ -565,7 +595,7 @@ When nothing qualifies it says exactly what failed and by how much, so "no model
 
 ## CI regression gating
 
-The harness can tell you which model is best today. `gate` tells you whether the prompt change you just made broke anything — the question teams ask far more often.
+The harness can tell you which model is best today. `gate` tells you whether the prompt change you just made broke anything, the question teams ask far more often.
 
 ```bash
 python main.py gate --profile regulated_qa \
@@ -610,7 +640,7 @@ rerank_provider: together
 judge_provider: together
 ```
 
-That pinning is what keeps the comparison valid — if two models saw different retrieved passages, the run measures the embedders, not the models — and it is what makes a cross-vendor matrix possible at all when a provider is missing a capability.
+That pinning is what keeps the comparison valid, if two models saw different retrieved passages, the run measures the embedders, not the models, and it is what makes a cross-vendor matrix possible at all when a provider is missing a capability.
 
 ### Provider capabilities
 
@@ -633,7 +663,7 @@ Provider routing problems:
 
 ### Running OpenRouter-only
 
-OpenRouter serves an OpenAI-shaped `/v1/embeddings` endpoint, so it can build the vector index as well as run the models — no second key required:
+OpenRouter serves an OpenAI-shaped `/v1/embeddings` endpoint, so it can build the vector index as well as run the models, no second key required:
 
 ```yaml
 default_provider: openrouter
@@ -648,9 +678,9 @@ rerank_provider: openrouter
 judge_provider: openrouter
 ```
 
-Then point the profile's `embedding_model` at an OpenRouter embedder — `baai/bge-m3` (1024-dim, $0.01/M) or `openai/text-embedding-3-small` (1536-dim, $0.02/M) — and re-run `ingest`. Changing the embedder changes the Qdrant collection name deliberately: vectors from two different embedders are not comparable, so they must not share an index.
+Then point the profile's `embedding_model` at an OpenRouter embedder: `baai/bge-m3` (1024-dim, $0.01/M) or `openai/text-embedding-3-small` (1536-dim, $0.02/M), and re-run `ingest`. Changing the embedder changes the Qdrant collection name deliberately: vectors from two different embedders are not comparable, so they must not share an index.
 
-> **The two namespaces are not interchangeable.** Together's `BAAI/bge-large-en-v1.5` and OpenRouter's `baai/bge-m3` differ in vendor casing *and* are different models. `configs/pricing.yaml` can key either form, and a provider-qualified key (`openrouter:meta-llama/llama-3.3-70b-instruct`) wins over a bare one — the same weights genuinely cost a different amount through a router than direct.
+> **The two namespaces are not interchangeable.** Together's `BAAI/bge-large-en-v1.5` and OpenRouter's `baai/bge-m3` differ in vendor casing *and* are different models. `configs/pricing.yaml` can key either form, and a provider-qualified key (`openrouter:meta-llama/llama-3.3-70b-instruct`) wins over a bare one, the same weights genuinely cost a different amount through a router than direct.
 
 Mixing hosted and self-hosted in one matrix is the point: *"is the API worth it versus what we can run ourselves?"* is a cost question you cannot answer from inside a single-vendor harness.
 
@@ -665,19 +695,19 @@ Cost is measured, not estimated, and split by the subsystem that caused it:
         'rerank_usd': 0.0, 'total_usd': 10.32, 'cache_hit_rate': 0.41, ...}
 ```
 
-That split routinely surprises people: on a judge-scored profile the judge is usually the largest line. The original harness billed generation only, so it reported roughly a third of the true cost — and because cost carries a negative weight in the composite, it also mis-ranked the models.
+That split routinely surprises people: on a judge-scored profile the judge is usually the largest line. The original harness billed generation only, so it reported roughly a third of the true cost, and because cost carries a negative weight in the composite, it also mis-ranked the models.
 
 Three protections:
 
-- **`--budget 25.00`** (or `budget_usd` in `run.yaml`) — a hard ceiling. The run aborts cleanly, keeps every row already written, and stops issuing calls immediately rather than paying for a matrix it will discard.
-- **`estimate`** — a forecast *including judge calls*, priced per model rather than sampling the first one.
-- **Judge and query-embedding caching** — a judge verdict is a pure function of its inputs, and the same query was previously embedded once per model, per tuning candidate, per pass.
+- **`--budget 25.00`** (or `budget_usd` in `run.yaml`), a hard ceiling. The run aborts cleanly, keeps every row already written, and stops issuing calls immediately rather than paying for a matrix it will discard.
+- **`estimate`**, a forecast *including judge calls*, priced per model rather than sampling the first one.
+- **Judge and query-embedding caching**, a judge verdict is a pure function of its inputs, and the same query was previously embedded once per model, per tuning candidate, per pass.
 
 ---
 
 ## Non-RAG workloads
 
-Most LLM evaluation isn't retrieval-augmented. Set `task: classify` or `task: direct` and the same apparatus — matrix walk, cost metering, caching, significance testing, regression gating — works with no corpus, no embedder and no vector store. See `configs/profiles/support_triage.yaml`:
+Most LLM evaluation isn't retrieval-augmented. Set `task: classify` or `task: direct` and the same apparatus, matrix walk, cost metering, caching, significance testing, regression gating, works with no corpus, no embedder and no vector store. See `configs/profiles/support_triage.yaml`:
 
 ```yaml
 name: support_triage
@@ -691,7 +721,7 @@ max_tokens: 32
 python main.py run --profile support_triage
 ```
 
-Classification reports per-class precision/recall/F1 and **macro-F1** alongside accuracy — on the imbalanced label distributions real queues have, a model that never predicts the rare-but-critical class can still post 95% accuracy.
+Classification reports per-class precision/recall/F1 and **macro-F1** alongside accuracy, on the imbalanced label distributions real queues have, a model that never predicts the rare-but-critical class can still post 95% accuracy.
 
 ---
 
@@ -699,7 +729,7 @@ Classification reports per-class precision/recall/F1 and **macro-F1** alongside 
 
 See [step 7](#7-run-on-your-own-data) for the commands. This section covers what `prepare_dataset.py` actually does and where it goes wrong.
 
-It takes a folder of PDFs plus a Q&A spreadsheet and produces the two JSONL files the harness reads, **auto-labeling the gold passages** along the way. Because your gold answers are exact strings, it can find which chunk contains each one — recovering the retrieval metrics (hit-rate@k, MRR, NDCG) with no manual passage labeling. It uses the harness's own chunker, so the chunk ids it writes match exactly what `ingest` creates.
+It takes a folder of PDFs plus a Q&A spreadsheet and produces the two JSONL files the harness reads, **auto-labeling the gold passages** along the way. Because your gold answers are exact strings, it can find which chunk contains each one, recovering the retrieval metrics (hit-rate@k, MRR, NDCG) with no manual passage labeling. It uses the harness's own chunker, so the chunk ids it writes match exactly what `ingest` creates.
 
 The spreadsheet needs only two columns, `Question` and `Answer`, one pair per row. Extra columns are ignored. Answers it can't locate are still written as valid items; they just don't contribute to retrieval metrics.
 
@@ -728,7 +758,9 @@ Both files are **JSONL** (one JSON object per line, UTF-8).
 
 `item_type` is one of `answerable`, `unanswerable`, `noise_injected`, `injection`. Passage IDs use `doc_id#chunkindex`.
 
-`human_label` is optional and unlocks **judge calibration** — how well the LLM judge agrees with a person, reported as Cohen's kappa. Every judge-scored number in the harness rests on that assumption, and this is the only thing that checks it. Labelling even 30 items is worth it.
+`meta.language` takes a code from the language table (`en`, `hi`, `mr` Marathi, `bn` Bengali, `gu` Gujarati, `kn` Kannada, `te` Telugu, `hinglish`) and gives every write-up a per-language reading. A direct-task profile may set `target_script` to a script or a language (`devanagari`, `marathi`, `kn`); the share of the answer in that script is scored as `native_script_ratio`, apart from accuracy. Numeric scoring reads Indic digits in every listed script.
+
+`human_label` is optional and unlocks **judge calibration**, how well the LLM judge agrees with a person, reported as Cohen's kappa. Every judge-scored number in the harness rests on that assumption, and this is the only thing that checks it. Labelling even 30 items is worth it.
 
 ### Choosing the answer scorer
 
@@ -737,17 +769,17 @@ Both files are **JSONL** (one JSON object per line, UTF-8).
 | `exact` | answers are short and fixed | strictest |
 | `numeric` | answers are numbers | scans every number, so a leading year doesn't score the answer wrong |
 | `contains` | a keyword must appear | gameable: a model dumping the whole context always "contains" the gold |
-| `token_f1` | free-form answers, no budget for a judge | graded, deterministic, penalises padding — **a good default** |
+| `token_f1` | free-form answers, no budget for a judge | graded, deterministic, penalises padding, **a good default** |
 | `judge` | free-form answers where wording varies | most accurate, most expensive; also unlocks faithfulness/relevance/completeness |
 
 ---
 
 ## Configuration
 
-- **`configs/profiles/*.yaml`** — one per workload: corpus/evalset, embedder, retrieval settings, active metrics, weights, probe settings and the tuning search space.
-- **`configs/models.yaml`** — models under test, provider routing, judge, reranker.
-- **`configs/pricing.yaml`** — dated per-token prices.
-- **`configs/run.yaml`** — run matrix, splits, concurrency, budget, retries, checkpointing.
+- **`configs/profiles/*.yaml`**, one per workload: corpus/evalset, embedder, retrieval settings, active metrics, weights, probe settings and the tuning search space.
+- **`configs/models.yaml`**, models under test, provider routing, judge, reranker.
+- **`configs/pricing.yaml`**, dated per-token prices.
+- **`configs/run.yaml`**, run matrix, splits, concurrency, budget, retries, checkpointing.
 
 Profiles are **validated on load**, and every problem is reported at once:
 
@@ -764,7 +796,7 @@ Each of those used to be a silent failure that produced a plausible-looking lead
 
 ### The adapted pass (equal-budget tuning)
 
-For each model the harness searches up to *N* configurations — identical *N* for every model — over a held-out dev split, varying retrieval mode, `k`, reranking, **context ordering** and any candidate prompts you list under `knobs:`. It then re-runs the winner on the test split. **Tuning gain = adapted − baseline.**
+For each model the harness searches up to *N* configurations, identical *N* for every model, over a held-out dev split, varying retrieval mode, `k`, reranking, **context ordering** and any candidate prompts you list under `knobs:`. It then re-runs the winner on the test split. **Tuning gain = adapted − baseline.**
 
 You never tune manually; you supply a small menu of options once and the search is automatic. It's roughly `tuning_budget` times more expensive than the baseline, so it's off by default.
 
@@ -772,13 +804,13 @@ You never tune manually; you supply a small menu of options once and the search 
 
 ## Understanding the results
 
-- **Leaderboard (weighted composite)** — deterministic arithmetic from the profile's weights. Set `normalise=True` when mixing metrics with very different scales, or latency in milliseconds will silently outweigh accuracy in [0,1].
-- **Significance** — the section that decides whether the leaderboard order means anything.
-- **Pareto frontier** — models not beaten on all of accuracy, cost and latency. When top models tie on quality, this is where the decision lives.
-- **Tuning gain** — which models benefit most from tuning, under an equal budget.
-- **Error attribution** — *why* items failed. `rate_limit` means lower your concurrency; `context_length` means lower your `k`; `content_filter` is a finding about the model.
-- **Truncation rate** — answers cut off by `max_tokens`. Their completeness and citation scores are invalid; this is a config problem that looks exactly like a quality finding.
-- **Judge calibration** — Cohen's kappa against human labels, not raw agreement. A judge that marks everything correct scores 90% agreement on a set that's 90% correct while carrying no information; kappa reports ~0 there.
+- **Leaderboard (weighted composite)**, deterministic arithmetic from the profile's weights. Set `normalise=True` when mixing metrics with very different scales, or latency in milliseconds will silently outweigh accuracy in [0,1].
+- **Significance**, the section that decides whether the leaderboard order means anything.
+- **Pareto frontier**, models not beaten on all of accuracy, cost and latency. When top models tie on quality, this is where the decision lives.
+- **Tuning gain**, which models benefit most from tuning, under an equal budget.
+- **Error attribution**, *why* items failed. `rate_limit` means lower your concurrency; `context_length` means lower your `k`; `content_filter` is a finding about the model.
+- **Truncation rate**, answers cut off by `max_tokens`. Their completeness and citation scores are invalid; this is a config problem that looks exactly like a quality finding.
+- **Judge calibration**: Cohen's kappa against human labels, not raw agreement. A judge that marks everything correct scores 90% agreement on a set that's 90% correct while carrying no information; kappa reports ~0 there.
 
 ---
 
@@ -819,8 +851,8 @@ llm-eval-harness/
 
 ## Deployment
 
-Running this on anything other than your own laptop — a shared box, a container,
-a CI pipeline — is covered in **[DEPLOYMENT.md](DEPLOYMENT.md)**: five deployment
+Running this on anything other than your own laptop, a shared box, a container,
+a CI pipeline, is covered in **[DEPLOYMENT.md](DEPLOYMENT.md)**: five deployment
 modes, a CI gate workflow, cost controls, backup, and the security rules that
 matter.
 
@@ -834,7 +866,7 @@ The short version:
 
 **One rule worth repeating here:** the app accepts an API key and spends money,
 and Streamlit ships no authentication. Bind it to `127.0.0.1` or put an
-authenticated reverse proxy in front before anyone else can reach it — and give
+authenticated reverse proxy in front before anyone else can reach it, and give
 the team `dashboard.py`, which is read-only by construction.
 
 ---
@@ -846,25 +878,25 @@ Problems while *running an evaluation*. For install and first-run issues, see [L
 | Symptom | Cause & fix |
 |---|---|
 | `401 Invalid API key` | The harness is using a different key than you think. Set the provider's env var before launching and check the sidebar field matches. |
-| `404` / model not found | The model string is retired or not on your account. Run `python main.py validate --profile <p>` — it pre-flights every provider before spending. |
+| `404` / model not found | The model string is retired or not on your account. Run `python main.py validate --profile <p>`, it pre-flights every provider before spending. |
 | "Provider X serves no embeddings" | Expected: Anthropic and Groq don't. Set `embedding_provider` in `models.yaml` to one that does. |
 | `fastembed is not installed` | BM25/hybrid retrieval needs it: `pip install fastembed`. Or set `retrieval_mode: dense`. |
 | Everything scores ~1.0 | Questions are too easy to separate models. `main.py report` now tells you the minimum detectable gap and how many items you'd need. |
-| Wide confidence intervals | Same — check the power section for the number of questions required. |
+| Wide confidence intervals | Same, check the power section for the number of questions required. |
 | Run died partway | `python main.py run --profile <p> --resume <run_id>`. Rows are checkpointed, so nothing already paid for is lost. |
 | Lots of `rate_limit` errors | Lower `max_workers`, or set a per-provider `rate_limit` in `models.yaml`. Pacing is cheaper than backing off. |
 | Judge costs more than the models | Expected, and now visible. Use `token_f1` scoring, or cache-warm by re-running (judge calls are cached). |
-| Cost shows as blank | That model has no entry in `configs/pricing.yaml`. Blank is deliberate — a zero-cost model would win the leaderboard. |
+| Cost shows as blank | That model has no entry in `configs/pricing.yaml`. Blank is deliberate, a zero-cost model would win the leaderboard. |
 
 ---
 
 ## Design notes
 
-- **Latency is measured in its own lane** — serial, models interleaved, cache *genuinely* bypassed via a null cache, warm-up discarded, streaming on for TTFT. On a shared hosted API, firing everything at once benchmarks your own queuing, not the model.
+- **Latency is measured in its own lane**, serial, models interleaved, cache *genuinely* bypassed via a null cache, warm-up discarded, streaming on for TTFT. On a shared hosted API, firing everything at once benchmarks your own queuing, not the model.
 - **The cache is the reproducibility guarantee**, not the seed. Hosted inference isn't bit-for-bit deterministic over time; caching raw outputs by a hash of (model, prompt, params) makes cost and accuracy reproducible and free to re-report.
-- **Every metric field is Optional.** Inactive metrics stay `None` rather than `0.0`, so "not measured" stays distinguishable from "measured as zero" — a metric defaulting to zero would drag every mean built on it downward.
+- **Every metric field is Optional.** Inactive metrics stay `None` rather than `0.0`, so "not measured" stays distinguishable from "measured as zero", a metric defaulting to zero would drag every mean built on it downward.
 - **The judge never grades its own family**, and the guard resolves `provider:` prefixes so it can't be defeated by how a model happens to be addressed.
-- **Pairwise comparisons are position-bias corrected** — each pair is judged in both orders and a win counts only if it survives the swap. Judges favour whichever answer they see first, so an uncorrected Elo table partly ranks argument position.
+- **Pairwise comparisons are position-bias corrected**, each pair is judged in both orders and a win counts only if it survives the swap. Judges favour whichever answer they see first, so an uncorrected Elo table partly ranks argument position.
 - **Retrieval metrics are scored before probe mutation.** Score the retriever on what it actually found; score the model on the adversarial context it was given.
 - **Pricing is dated and fails loudly.** The report warns when prices are stale, because a benchmark quoting year-old rates as fact is misleading in a way nobody notices.
 - **The store is append-only.** Each checkpoint is its own Parquet part: O(batch) writes, crash-safe, and readable through one DuckDB glob.
@@ -875,13 +907,13 @@ Problems while *running an evaluation*. For install and first-run issues, see [L
 
 Deliberately not built yet, in rough order of value:
 
-- **Multi-turn conversational evaluation** — the schema carries `history`, but there's no goal-completion metric across turns.
-- **Tool/function-calling evaluation** — schema-validity, argument correctness and recovery from tool errors.
-- **Retrieval-free ablations** — automatically re-run with an empty context to measure how much of the score is parametric memory rather than retrieval.
+- **Multi-turn conversational evaluation**, the schema carries `history`, but there's no goal-completion metric across turns.
+- **Tool/function-calling evaluation**, schema-validity, argument correctness and recovery from tool errors.
+- **Retrieval-free ablations**, automatically re-run with an empty context to measure how much of the score is parametric memory rather than retrieval.
 - **Semantic near-duplicate detection** in evalsets, and train/test contamination checks against the corpus.
 - **Human-in-the-loop labelling UI** to grow the `human_label` set that judge calibration depends on.
 - **Cross-encoder-free rerank baselines** (MMR, diversity sampling) so reranking has a cheap comparison point.
-- **Batch API support** where providers offer it — typically ~50% cheaper for non-latency-sensitive judge calls.
+- **Batch API support** where providers offer it, typically ~50% cheaper for non-latency-sensitive judge calls.
 
 ---
 

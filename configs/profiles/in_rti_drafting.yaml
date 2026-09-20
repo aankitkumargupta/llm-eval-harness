@@ -1,0 +1,68 @@
+name: in_rti_drafting
+description: >
+  Drafting a Right to Information application from a citizen's description
+  of their problem: a pension that stopped, a road that broke up, a tender
+  nobody can see. Fifty-one fictional situations in English, Hindi and Hinglish.
+  A usable draft names the right office, asks for the specific records that
+  answer the problem, states the period, and carries the fee, the 30-day
+  clock, the transfer request and the appeal route. The judge scores a
+  model's draft against a reference built from those elements for accuracy
+  (right office, right records), completeness (nothing required missing)
+  and relevance (this citizen's problem, not a generic form).
+
+task: direct
+evalset_path: data/in_rti_drafting/evalset.jsonl
+corpus_path: ""
+embedding_model: ""
+
+# Judge-scored: there is no single correct wording of an application.
+accuracy_scorer: judge
+
+# A complete draft runs 200 to 350 words; leave headroom so that a longer
+# but correct draft is not truncated and scored down for the wrong reason.
+# The BASELINE system prompt: the task instruction itself. The knobs'
+# system_prompts below are candidates for the adapted pass only and never
+# reach the baseline; without this the models get only the generic task
+# default and are never told what this particular job is.
+system_prompt: >-
+  You help citizens in India draft applications under the Right to Information Act, 2005. From the situation described, write a complete application addressed to the Public Information Officer of the correct public authority. Ask for the specific records that would answer the citizen's problem, numbered; state the period; state that the applicant is a citizen of India; mention the Rs 10 fee (waived for BPL applicants); ask for the information within 30 days under Section 7(1), for transfer under Section 6(3) if another authority holds it, and for the exemption and first appellate authority to be named if anything is refused. If no reply came to an earlier application, draft a first appeal under Section 19(1) instead. Write in English unless the citizen asks for Hindi. Output only the draft.
+
+max_tokens: 4096         # a full draft plus the hidden reasoning before it; 2048 left GLM-5.3 and Qwen3.5-9B still thinking on the notice run
+temperature: 0.0
+
+active_metrics:
+  - accuracy
+  - completeness
+  - answer_relevance
+  - cost_usd
+  - latency_ms
+
+# Getting the office and the records right is most of the value; a draft
+# that misses the fee or the appeal route is fixable, one addressed to the
+# wrong authority is not. Cost negative by rule (I4).
+metric_weights:
+  accuracy: 0.45
+  completeness: 0.30
+  answer_relevance: 0.15
+  cost_usd: -0.10
+
+probes:
+  enabled: false
+  unanswerable: 0.0
+  injection: 0.0
+  noise: 0.0
+  paraphrase: 0.0
+  positional: 0.0
+
+tuning_budget: 8
+
+knobs:
+  retrieval_modes: [dense]
+  k_values: [1]
+  rerank_options: [false]
+  rerank_top_n: [1]
+  system_prompts:
+    - "You help citizens in India draft applications under the Right to Information Act, 2005. From the situation described, write a complete application addressed to the Public Information Officer of the correct public authority. Ask for the specific records that would answer the citizen's problem, numbered; state the period; state that the applicant is a citizen of India; mention the Rs 10 fee (waived for BPL applicants); ask for the information within 30 days under Section 7(1), for transfer under Section 6(3) if another authority holds it, and for the exemption and first appellate authority to be named if anything is refused. If no reply came to an earlier application, draft a first appeal under Section 19(1) instead. Write in English unless the citizen asks for Hindi. Output only the draft."
+    - "Draft an RTI application (Right to Information Act, 2005) for the situation below. Address it to the correct Public Information Officer, list the exact information sought as numbered points with the period, and include the standard elements: citizenship statement, Rs 10 fee, 30-day limit under Section 7(1), transfer under Section 6(3), and a request to name any exemption and the first appellate authority. Output the draft only."
+  few_shot_sets:
+    - []

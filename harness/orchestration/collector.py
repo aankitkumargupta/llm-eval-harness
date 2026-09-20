@@ -2,7 +2,7 @@
 Row collection: buffering, checkpointing, progress and error counting.
 
 Extracted from `Orchestrator`, which had accumulated six unrelated reasons to
-change — the three passes, plus buffering, plus progress reporting, plus resume
+change, the three passes, plus buffering, plus progress reporting, plus resume
 bookkeeping. Every pass needed the buffering behaviour, so it lived on the
 orchestrator and every pass reached into `self._pending`, `self._written`,
 `self._errors`, `self._done` and `self._total`. Shared mutable state across
@@ -108,7 +108,7 @@ class RowCollector:
         """Collect every finished future, even after the budget trips.
 
         Abandoning the loop on the first `BudgetExceeded` would discard rows
-        from items that had already completed and been paid for — the exact
+        from items that had already completed and been paid for, the exact
         opposite of what a budget abort should do. The trip is returned for the
         caller to report.
         """

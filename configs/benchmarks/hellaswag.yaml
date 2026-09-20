@@ -1,0 +1,55 @@
+# HellaSwag: commonsense sentence completion, four-way multiple choice.
+#
+# Scored on the VALIDATION split, not test: the test split ships with empty
+# labels (held out for the original leaderboard), so it cannot be scored
+# locally. lm-eval-harness does the same. See the adapter docstring for the
+# research note, including why a generative letter score is NOT comparable to
+# the published log-likelihood (acc_norm) numbers.
+id: hellaswag
+version: 1
+family: multiple_choice
+task: direct
+
+source:
+  kind: hf
+  ref: Rowan/hellaswag
+  config: default
+  split: validation      # the test split has no labels
+  # Pins the FIRST 1,000 validation rows as served by datasets-server, i.e.
+  # `bench fetch --benchmark hellaswag --limit 1000`. The anonymous
+  # datasets-server quota rejects the 101 back-to-back pages a full 10,042-row
+  # fetch needs; the same convention as arc_challenge / gsm8k_hf / mmlu_pro_hf.
+  # A full-split fetch will mismatch by design: bump `version`, re-pin.
+  checksum: "sha256:b89c3b2dd960555681da6a92485d59df689bdc861c284f22a0c1d9c37301944e"
+  licence: MIT
+  commercial_use: true
+  citation: "Zellers et al., 2019 - HellaSwag: Can a Machine Really Finish Your Sentence?"
+
+sampling: {limit: null, seed: 1729, stratify_by: "", samples_per_item: 1}
+
+prompt:
+  template: ""
+  few_shot: {n: 0, selection: fixed, pool_split: train}
+  system: null
+  decoding: {temperature: 0.0, max_tokens: 512, top_p: 1.0}
+
+scoring:
+  mode: generative       # published numbers are log-likelihood; see adapter note
+  extraction:
+    chain:
+      - {kind: regex, pattern: 'Answer:\s*\(?([A-D])\)?'}
+      - {kind: regex, pattern: '\*\*\s*\(?([A-D])\)?\s*\*\*'}
+      - {kind: last_capital_letter, max_option: D}
+  metric: accuracy
+  chance_level: 0.25     # four endings
+  aggregate: [mean]
+
+reporting:
+  primary_metric: accuracy
+  also: [accuracy_chance_adjusted, extraction_failure_rate,
+         format_violation_rate, truncation_rate, cost_usd, latency_p95_ms]
+
+# HellaSwag's validation split is widely present in web-scale pretraining
+# corpora. Option shuffling is the cheapest robustness probe available; a
+# large perturbation delta is evidence worth reading, never a verdict.
+contamination: {canary: false, ngram_overlap_against: null, perturbations: [option_shuffle]}

@@ -1,9 +1,9 @@
 """
-Anthropic adapter — the one major vendor that is not OpenAI-shaped.
+Anthropic adapter, the one major vendor that is not OpenAI-shaped.
 
 Everything else the harness talks to speaks the OpenAI wire format, so
 `OpenAICompatibleClient` covers it with a `base_url` swap. Anthropic does not,
-and the differences are not cosmetic — each one below is a silent wrong answer
+and the differences are not cosmetic, each one below is a silent wrong answer
 or a hard 400 if you paper over it:
 
   * `system` is a **top-level request parameter**, not a message with
@@ -11,14 +11,14 @@ or a hard 400 if you paper over it:
     system message; we lift it out here. Left in the array it would be rejected.
   * Token counts are `usage.input_tokens` / `usage.output_tokens`, not
     `prompt_tokens` / `completion_tokens`. Reading the wrong names yields zero
-    tokens, which quietly reports every Claude model as costing $0.00 — and cost
+    tokens, which quietly reports every Claude model as costing $0.00, and cost
     carries a negative weight in the leaderboard composite.
   * **`temperature` is removed on the current top models** (Fable 5, Opus 5,
     Opus 4.8/4.7, Sonnet 5) and returns a 400. The harness sends
     `temperature=0.0` on every call, so an adapter that forwards it blindly
     fails 100% of items on exactly the models people most want to benchmark.
   * There is no `seed`, so bit-level reproducibility comes from the harness
-    cache rather than the API — which was already the design here.
+    cache rather than the API, which was already the design here.
   * Anthropic serves **no embedding or rerank endpoint**. Declared up front so
     a profile misconfiguration fails with a clear message at startup instead of
     a confusing error thousands of items into an ingest.
@@ -44,7 +44,7 @@ _NO_SAMPLING_PREFIXES = (
 )
 
 # Published list prices, USD per 1M tokens, as a fallback when a Claude model is
-# missing from configs/pricing.yaml. The YAML always wins — this only exists so
+# missing from configs/pricing.yaml. The YAML always wins, this only exists so
 # that adding a Claude model to models.yaml doesn't silently report zero cost.
 DEFAULT_PRICING_USD_PER_MTOK: dict[str, dict[str, float]] = {
     "claude-fable-5":   {"input": 10.00, "output": 50.00},
@@ -122,7 +122,7 @@ class AnthropicClient:
         if base_url:
             kwargs["base_url"] = base_url
         # With no explicit key the SDK resolves ANTHROPIC_API_KEY, then
-        # ANTHROPIC_AUTH_TOKEN, then an `ant auth login` profile — so an unset
+        # ANTHROPIC_AUTH_TOKEN, then an `ant auth login` profile, so an unset
         # env var does not mean "no credentials".
         self._client = anthropic.Anthropic(**kwargs)
 
@@ -171,7 +171,7 @@ class AnthropicClient:
                         "messages": convo, **extra}
         if system:
             kwargs["system"] = system
-        # The single most important guard in this file — see module docstring.
+        # The single most important guard in this file, see module docstring.
         if supports_sampling(model):
             kwargs["temperature"] = temperature
         if self.thinking is not None:
@@ -207,7 +207,7 @@ class AnthropicClient:
         """Concatenate the text blocks, skipping thinking/tool blocks.
 
         `content` is a list of typed blocks, so indexing `[0].text` breaks the
-        moment thinking is on — the first block is then a thinking block.
+        moment thinking is on, the first block is then a thinking block.
         """
         return "".join(b.text for b in resp.content
                        if getattr(b, "type", None) == "text")
@@ -284,7 +284,7 @@ class AnthropicClient:
     #
     # Defining them just to raise made this class structurally satisfy the
     # Embedder and DocumentReranker protocols while being unable to honour
-    # either — so `isinstance(client, Embedder)` answered True for a client that
+    # either, so `isinstance(client, Embedder)` answered True for a client that
     # can never embed, and the only real signal was a separate boolean flag that
     # could drift out of sync with the code. Omitting the methods makes the type
     # tell the truth; `base.require()` turns the resulting absence into the same

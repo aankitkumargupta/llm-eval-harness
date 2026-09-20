@@ -7,7 +7,7 @@ Two problems this fixes.
 judge-scored profile makes *two extra model calls per item* against a large
 judge model, plus a query embedding, plus an optional rerank. On a
 regulated-QA-style profile the judge is routinely the majority of the bill, so
-"cost per query" was reporting maybe a third of what the run actually cost — and
+"cost per query" was reporting maybe a third of what the run actually cost, and
 cost carries a negative weight in the leaderboard composite, so the ranking
 itself was wrong, not just the dollar figure.
 
@@ -101,13 +101,42 @@ class CostMeter:
     """
 
     def __init__(self, budget_usd: float = 0.0):
-        # budget_usd <= 0 means "no ceiling" — the default, so existing runs
+        # budget_usd <= 0 means "no ceiling", the default, so existing runs
         # behave exactly as before unless a limit is opted into.
         self.budget_usd = float(budget_usd)
         self.costs = CostBreakdown()
         self.counts = CallCounts()
         self._lock = threading.Lock()
         self._tripped = False
+        # Per-thread ledger for exact per-item attribution. One eval item runs
+        # entirely on one worker thread, so the calls recorded on a thread
+        # between begin_item() and take_item() are that item's and no other's.
+        # The shared totals above stay the authority for the budget and the
+        # run-level report; the ledger exists so a ROW can be exact too.
+        self._ledger = threading.local()
+
+    # -- per-item ledger --------------------------------------------------- #
+    def begin_item(self) -> None:
+        """Start attributing this thread's calls to a new item."""
+        self._ledger.item = {"judge_usd": 0.0, "embedding_usd": 0.0,
+                             "rerank_usd": 0.0, "generation_usd": 0.0}
+
+    def take_item(self) -> dict:
+        """The calls recorded on this thread since begin_item(), and reset.
+
+        Returns zeros if begin_item() was never called on this thread, so a
+        caller that forgot to bracket gets an honest nothing, not another
+        thread's spend.
+        """
+        item = getattr(self._ledger, "item", None) or {}
+        self._ledger.item = None
+        return {"judge_usd": 0.0, "embedding_usd": 0.0, "rerank_usd": 0.0,
+                "generation_usd": 0.0, **item}
+
+    def _ledger_add(self, key: str, usd: float) -> None:
+        item = getattr(self._ledger, "item", None)
+        if item is not None:
+            item[key] += usd
 
     # -- recording ------------------------------------------------------- #
     def record_generation(self, usd: float, prompt_tokens: int = 0,
@@ -121,6 +150,7 @@ class CostMeter:
                 self.counts.generation += 1
             self.counts.prompt_tokens += prompt_tokens
             self.counts.completion_tokens += completion_tokens
+        self._ledger_add("judge_usd" if is_judge else "generation_usd", usd)
         self.check()
 
     def record_embedding(self, usd: float, tokens: int = 0) -> None:
@@ -128,12 +158,14 @@ class CostMeter:
             self.costs.embedding += usd
             self.counts.embedding += 1
             self.counts.embedding_tokens += tokens
+        self._ledger_add("embedding_usd", usd)
         self.check()
 
     def record_rerank(self, usd: float) -> None:
         with self._lock:
             self.costs.rerank += usd
             self.counts.rerank += 1
+        self._ledger_add("rerank_usd", usd)
         self.check()
 
     def record_cache_hit(self) -> None:
@@ -222,12 +254,12 @@ def forecast_run(
     avg_judge_prompt_tokens: int = 1400,
     avg_judge_completion_tokens: int = 120,
 ) -> CostForecast:
-    """Estimate a run's spend, *including the judge* — which the old estimate omitted.
+    """Estimate a run's spend, *including the judge*, which the old estimate omitted.
 
     Prices each model at its own rate rather than sampling the first one, since a
     matrix mixing a 20B and a 120B model has a spend profile the cheap model's
-    price badly misrepresents. Still an estimate — real prompt length depends on
-    your corpus — but it is now the right order of magnitude.
+    price badly misrepresents. Still an estimate, real prompt length depends on
+    your corpus, but it is now the right order of magnitude.
     """
     per_model_items = 0
     if do_baseline:

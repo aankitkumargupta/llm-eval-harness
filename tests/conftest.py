@@ -29,6 +29,49 @@ def _run_from_repo_root(monkeypatch):
     monkeypatch.chdir(ROOT)
 
 
+@pytest.fixture(autouse=True)
+def _no_network(request, monkeypatch):
+    """Block outbound sockets for the whole suite (CLAUDE.md §5).
+
+    Phase 0 recorded this as finding R-07. No test *did* open a connection, but
+    nothing stopped one from being added — so the offline guarantee was a
+    convention, and the kind of convention that breaks silently: a new test that
+    accidentally hits a live provider passes locally for whoever has the key
+    exported, then fails in CI for reasons that look like flakiness.
+
+    Blocking `socket.socket` at the constructor catches it at the point of
+    creation, where the traceback still names the offending line. Tests marked
+    `live` opt out and are excluded from the default run by `addopts`.
+    """
+    if request.node.get_closest_marker("live"):
+        return
+
+    import socket
+
+    real_socket = socket.socket
+
+    class _Blocked(real_socket):  # type: ignore[misc]  # subclass for isinstance()
+        def __init__(self, *a, **kw):
+            raise RuntimeError(
+                "Network access is blocked in the offline suite. If this test "
+                "genuinely needs a provider, mark it `@pytest.mark.live` — it "
+                "will then be excluded from the default run and must stay "
+                "budget-capped. Otherwise use the FakeClient in conftest.py."
+            )
+
+    monkeypatch.setattr(socket, "socket", _Blocked)
+    # `create_connection` builds its socket internally; patch it too so the
+    # error names the network attempt rather than an obscure internal failure.
+    monkeypatch.setattr(socket, "create_connection", _blocked_connection)
+
+
+def _blocked_connection(*a, **kw):
+    raise RuntimeError(
+        "Network access is blocked in the offline suite (socket.create_connection). "
+        "Mark the test `@pytest.mark.live` if it genuinely needs a provider."
+    )
+
+
 class FakeClient:
     """A deterministic stand-in for a provider.
 

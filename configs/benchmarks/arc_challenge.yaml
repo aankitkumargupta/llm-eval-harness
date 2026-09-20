@@ -1,0 +1,41 @@
+# ARC-Challenge, grade-school science, four-way multiple choice.
+id: arc_challenge
+version: 1
+family: multiple_choice
+task: direct
+
+source:
+  kind: hf
+  ref: allenai/ai2_arc
+  config: ARC-Challenge   # the config IS the task name here
+  split: test
+  checksum: "sha256:94c1fa0f22f34276a05cbe58178d74b85acb7ad8ab6b711777a5492048242504"
+  licence: CC-BY-SA-4.0
+  commercial_use: true
+  citation: "Clark et al., 2018: Think you have Solved Question Answering?"
+
+sampling: {limit: null, seed: 1729, stratify_by: "", samples_per_item: 1}
+
+prompt:
+  template: ""
+  few_shot: {n: 0, selection: fixed, pool_split: train}
+  system: null
+  decoding: {temperature: 0.0, max_tokens: 512, top_p: 1.0}
+
+scoring:
+  mode: generative
+  extraction:
+    chain:
+      - {kind: regex, pattern: 'Answer:\s*\(?([A-H])\)?'}
+      - {kind: regex, pattern: '\*\*\s*\(?([A-H])\)?\s*\*\*'}
+      - {kind: last_capital_letter, max_option: H}
+  metric: accuracy
+  chance_level: 0.25      # FOUR options, not ten
+  aggregate: [mean]
+
+reporting:
+  primary_metric: accuracy
+  also: [accuracy_chance_adjusted, extraction_failure_rate,
+         format_violation_rate, truncation_rate, cost_usd, latency_p95_ms]
+
+contamination: {canary: false, ngram_overlap_against: null, perturbations: [option_shuffle]}

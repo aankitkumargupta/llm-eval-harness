@@ -1,0 +1,20 @@
+{"item_id": "syn_if_00", "prompt": "Describe the sea in at most 20 words.", "constraints": {"max_words": 20}, "_synthetic": true}
+{"item_id": "syn_if_01", "prompt": "Explain photosynthesis in at least 30 words.", "constraints": {"min_words": 30}, "_synthetic": true}
+{"item_id": "syn_if_02", "prompt": "Reply entirely in lowercase: name three cities.", "constraints": {"all_lowercase": true}, "_synthetic": true}
+{"item_id": "syn_if_03", "prompt": "Reply with a JSON object mapping \"a\" to 1.", "constraints": {"valid_json": true}, "_synthetic": true}
+{"item_id": "syn_if_04", "prompt": "List exactly three benefits of cycling as bullets.", "constraints": {"num_bullets": 3}, "_synthetic": true}
+{"item_id": "syn_if_05", "prompt": "Argue for public libraries, using the word 'therefore'.", "constraints": {"contains": "therefore"}, "_synthetic": true}
+{"item_id": "syn_if_06", "prompt": "Describe a storm without using the word 'very'.", "constraints": {"not_contains": "very"}, "_synthetic": true}
+{"item_id": "syn_if_07", "prompt": "Write two sentences about rain with no commas.", "constraints": {"no_commas": true}, "_synthetic": true}
+{"item_id": "syn_if_08", "prompt": "Begin your reply with the word Yes, then explain tides.", "constraints": {"starts_with": "Yes"}, "_synthetic": true}
+{"item_id": "syn_if_09", "prompt": "Write exactly two paragraphs about bridges.", "constraints": {"num_paragraphs": 2}, "_synthetic": true}
+{"item_id": "syn_if_10", "prompt": "Describe the sea in at most 20 words.", "constraints": {"max_words": 20}, "_synthetic": true}
+{"item_id": "syn_if_11", "prompt": "Explain photosynthesis in at least 30 words.", "constraints": {"min_words": 30}, "_synthetic": true}
+{"item_id": "syn_if_12", "prompt": "Reply entirely in lowercase: name three cities.", "constraints": {"all_lowercase": true}, "_synthetic": true}
+{"item_id": "syn_if_13", "prompt": "Reply with a JSON object mapping \"a\" to 1.", "constraints": {"valid_json": true}, "_synthetic": true}
+{"item_id": "syn_if_14", "prompt": "List exactly three benefits of cycling as bullets.", "constraints": {"num_bullets": 3}, "_synthetic": true}
+{"item_id": "syn_if_15", "prompt": "Argue for public libraries, using the word 'therefore'.", "constraints": {"contains": "therefore"}, "_synthetic": true}
+{"item_id": "syn_if_16", "prompt": "Describe a storm without using the word 'very'.", "constraints": {"not_contains": "very"}, "_synthetic": true}
+{"item_id": "syn_if_17", "prompt": "Write two sentences about rain with no commas.", "constraints": {"no_commas": true}, "_synthetic": true}
+{"item_id": "syn_if_18", "prompt": "Begin your reply with the word Yes, then explain tides.", "constraints": {"starts_with": "Yes"}, "_synthetic": true}
+{"item_id": "syn_if_19", "prompt": "Write exactly two paragraphs about bridges.", "constraints": {"num_paragraphs": 2}, "_synthetic": true}

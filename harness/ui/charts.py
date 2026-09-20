@@ -3,21 +3,21 @@ Chart builders.
 
 Each chart's *form* is picked from the data's job before any colour is chosen:
 
-  pareto_chart        — "which models are not beaten on every axis?" One class is
+  pareto_chart: "which models are not beaten on every axis?" One class is
                         the subject, the rest are context, so this is EMPHASIS:
-                        one accent hue plus gray. Not eight categorical hues —
+                        one accent hue plus gray. Not eight categorical hues,
                         scatter is an all-pairs form where more than three hues
                         cannot clear the colour-vision floors anyway.
-  significance_matrix — "is A better, worse, or indistinguishable from B?" That
+  significance_matrix: "is A better, worse, or indistinguishable from B?" That
                         is polarity, so DIVERGING: blue <-> red with a neutral
                         gray midpoint that genuinely reads as "no difference".
-  metric_bars         — "compare magnitude across models." One series, so ONE
+  metric_bars: "compare magnitude across models." One series, so ONE
                         colour for every bar. Colouring bars darker-where-bigger
                         would double-encode length as hue and burn the only free
                         channel on information the bar already shows.
-  cost_projection     — magnitude again, same treatment, with the quality
+  cost_projection, magnitude again, same treatment, with the quality
                         constraint carried by a label rather than a second axis.
-  latency_bars        — p50 and p95 as two named series (2 slots, legend shown).
+  latency_bars, p50 and p95 as two named series (2 slots, legend shown).
 
 Rules held throughout: no dual axes, hairline solid grid, thin marks, a legend
 whenever two or more series are present, tooltips on every mark, and text in ink
@@ -57,7 +57,7 @@ def _short(names: pd.Series, width: int = 26) -> pd.Series:
 
 
 # --------------------------------------------------------------------------- #
-#  Pareto frontier — EMPHASIS
+#  Pareto frontier: EMPHASIS
 # --------------------------------------------------------------------------- #
 def pareto_chart(pf: pd.DataFrame, palette: Palette,
                  height: int = 300) -> alt.LayerChart | alt.Chart:
@@ -65,7 +65,7 @@ def pareto_chart(pf: pd.DataFrame, palette: Palette,
 
     The frontier is the decision: those are the models where buying more quality
     genuinely costs more, and everything off it is strictly beaten. So the
-    frontier carries the accent hue and the rest recede to gray — identity is
+    frontier carries the accent hue and the rest recede to gray, identity is
     also carried by the legend and by direct labels, never by colour alone.
     """
     if pf is None or pf.empty or "accuracy" not in pf.columns:
@@ -113,7 +113,7 @@ def pareto_chart(pf: pd.DataFrame, palette: Palette,
 
 
 # --------------------------------------------------------------------------- #
-#  Significance — DIVERGING
+#  Significance: DIVERGING
 # --------------------------------------------------------------------------- #
 def significance_matrix(sig: pd.DataFrame, palette: Palette,
                         height: int = 260) -> alt.LayerChart | alt.Chart:
@@ -169,7 +169,7 @@ def significance_matrix(sig: pd.DataFrame, palette: Palette,
 
 
 # --------------------------------------------------------------------------- #
-#  Magnitude — SINGLE HUE
+#  Magnitude: SINGLE HUE
 # --------------------------------------------------------------------------- #
 def metric_bars(df: pd.DataFrame, metric: str, palette: Palette,
                 title: str = "", height: int = 240,
@@ -237,7 +237,7 @@ def cost_projection_bars(proj: pd.DataFrame, palette: Palette,
 
 def latency_bars(agg: pd.DataFrame, palette: Palette,
                  height: int = 240) -> alt.LayerChart | alt.Chart:
-    """p50 and p95 side by side — two named series, so a legend is present.
+    """p50 and p95 side by side, two named series, so a legend is present.
 
     Both are milliseconds on one axis. Putting latency and any other unit on a
     second y-scale would invent a relationship the data does not contain.

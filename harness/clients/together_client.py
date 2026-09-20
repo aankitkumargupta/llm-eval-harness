@@ -1,5 +1,5 @@
 """
-TogetherClient — kept as the zero-config default.
+TogetherClient, kept as the zero-config default.
 
 Together is still the default provider and the one the bundled configs target,
 so this name stays valid and behaves exactly as before. It is now a thin

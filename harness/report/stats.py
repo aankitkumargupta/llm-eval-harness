@@ -8,18 +8,18 @@ the time the ranking would flip on a re-run.
 
 The original harness reported a bootstrap CI **per model**, which is the wrong
 interval for the decision being made. Two overlapping per-model CIs do *not*
-imply the difference is insignificant — the models were evaluated on the **same
+imply the difference is insignificant, the models were evaluated on the **same
 items**, so the comparison is paired, and pairing removes item difficulty (the
 dominant variance component) from the estimate. A paired test routinely finds a
 real difference where two marginal intervals overlap heavily.
 
 What's here:
 
-  paired_bootstrap    — CI and p-value on the per-item *difference*
-  mcnemar             — exact test for paired binary outcomes (correct/incorrect)
-  holm_bonferroni     — multiple-comparison correction across a model matrix
-  required_n          — how many questions you'd need to detect a given gap
-  significance_matrix — every pair, corrected, with a plain-language verdict
+  paired_bootstrap: CI and p-value on the per-item *difference*
+  mcnemar, exact test for paired binary outcomes (correct/incorrect)
+  holm_bonferroni, multiple-comparison correction across a model matrix
+  required_n, how many questions you'd need to detect a given gap
+  significance_matrix, every pair, corrected, with a plain-language verdict
 
 All of it is pure numpy/pandas over trace rows: no network, free to re-run.
 """
@@ -76,26 +76,100 @@ class ComparisonResult:
         }
 
 
+class UnpairedItemsError(ValueError):
+    """Two models were not scored on the same items, so they cannot be compared.
+
+    Raised rather than dropping the offenders, because dropping them breaks I1
+    in a way nothing downstream can detect. The failure is not that `n` gets
+    smaller, it is that the surviving set is no longer random. A model that
+    errored, refused or timed out will have done so disproportionately on its
+    *hard* items, so silently intersecting the two index sets compares the
+    models on a subset selected by one model's failures.
+
+    The previous implementation dropped silently and, when the two sets did not
+    overlap at all, returned empty arrays, which `compare_models` reported as
+    p = 1.0, "no significant difference", for two models that shared no items.
+    """
+
+    def __init__(self, model_a: str, model_b: str, metric: str,
+                 missing_from_a: tuple[str, ...], missing_from_b: tuple[str, ...],
+                 n_common: int):
+        self.model_a, self.model_b, self.metric = model_a, model_b, metric
+        self.missing_from_a = missing_from_a
+        self.missing_from_b = missing_from_b
+        self.n_common = n_common
+
+        def _show(ids: tuple[str, ...]) -> str:
+            head = ", ".join(ids[:5])
+            return head + (f" (+{len(ids) - 5} more)" if len(ids) > 5 else "")
+
+        parts = []
+        if missing_from_b:
+            parts.append(f"{model_b!r} has no {metric!r} for {len(missing_from_b)} "
+                         f"item(s) that {model_a!r} does: {_show(missing_from_b)}")
+        if missing_from_a:
+            parts.append(f"{model_a!r} has no {metric!r} for {len(missing_from_a)} "
+                         f"item(s) that {model_b!r} does: {_show(missing_from_a)}")
+        super().__init__(
+            "These models were not scored on the same items, so they cannot be "
+            "compared fairly. "
+            "Cannot pair " + f"{model_a!r} against {model_b!r} on {metric!r}: "
+            + "; ".join(parts)
+            + f". {n_common} item(s) are shared. Comparing only those would "
+              "select the item set by one model's failures, which is exactly "
+              "the bias pairing exists to remove. Re-run the missing items, or "
+              "pass on_unpaired='drop' (CLI: --allow-unpaired) to proceed with "
+              "the loss reported."
+        )
+
+
 def paired_values(df: pd.DataFrame, model_a: str, model_b: str,
                   metric: str,
-                  item_col: str = "item_id") -> tuple[np.ndarray, np.ndarray]:
+                  item_col: str = "item_id",
+                  on_unpaired: str = "raise",
+                  return_dropped: bool = False):
     """Line up two models' scores on the SAME items.
 
     Pairing is the whole point. Comparing marginal means throws away the fact
     that both models faced identical questions, and item difficulty is usually a
     much bigger source of variance than the model difference you're trying to
     detect.
+
+    `on_unpaired` controls what happens when that premise does not hold:
+
+      "raise" (default): `UnpairedItemsError`, naming the offending items.
+      "drop", intersect, as the original did, but only because a
+                           caller explicitly asked and will report the loss.
+
+    CLAUDE.md §9 Phase 5 step 3 requires the raise: items scored by one model
+    but not another "must raise, not drop silently, or pairing (I1) is broken".
     """
+    if on_unpaired not in ("raise", "drop"):
+        raise ValueError(f"on_unpaired must be 'raise' or 'drop', got {on_unpaired!r}")
+
     if metric not in df.columns:
-        return np.array([]), np.array([])
+        empty = (np.array([]), np.array([]))
+        return (*empty, ()) if return_dropped else empty
+
     a = (df[df["model"] == model_a].dropna(subset=[metric])
          .groupby(item_col)[metric].mean())
     b = (df[df["model"] == model_b].dropna(subset=[metric])
          .groupby(item_col)[metric].mean())
     common = a.index.intersection(b.index)
+
+    missing_from_b = tuple(str(i) for i in a.index.difference(b.index))
+    missing_from_a = tuple(str(i) for i in b.index.difference(a.index))
+    dropped = tuple(sorted(missing_from_a + missing_from_b))
+
+    if dropped and on_unpaired == "raise":
+        raise UnpairedItemsError(model_a, model_b, metric,
+                                 missing_from_a, missing_from_b, len(common))
+
     if len(common) == 0:
-        return np.array([]), np.array([])
-    return a.loc[common].to_numpy(float), b.loc[common].to_numpy(float)
+        out = (np.array([]), np.array([]))
+    else:
+        out = (a.loc[common].to_numpy(float), b.loc[common].to_numpy(float))
+    return (*out, dropped) if return_dropped else out
 
 
 def paired_bootstrap(a: np.ndarray, b: np.ndarray, n_boot: int = 5000,
@@ -133,8 +207,8 @@ def mcnemar(a: np.ndarray, b: np.ndarray,
     """Exact McNemar test for paired binary outcomes. Returns (b01, b10, p).
 
     The right test when the metric is pass/fail (accuracy with an exact or
-    judge-binary scorer). It looks only at *discordant* pairs — items where one
-    model was right and the other wrong — because items both got right and items
+    judge-binary scorer). It looks only at *discordant* pairs, items where one
+    model was right and the other wrong, because items both got right and items
     both got wrong carry no information about which is better. On a 100-item set
     where the models differ on 6 questions, this correctly reports that you have
     6 data points, not 100.
@@ -158,14 +232,15 @@ def mcnemar(a: np.ndarray, b: np.ndarray,
 
 def compare_models(df: pd.DataFrame, model_a: str, model_b: str,
                    metric: str = "accuracy", n_boot: int = 5000,
-                   seed: int = 0, binary_threshold: float | None = None
-                   ) -> ComparisonResult:
+                   seed: int = 0, binary_threshold: float | None = None,
+                   on_unpaired: str = "raise") -> ComparisonResult:
     """Full paired comparison of two models on one metric.
 
-    Automatically switches to McNemar when the metric is actually binary — using
+    Automatically switches to McNemar when the metric is actually binary, using
     a bootstrap on 0/1 data works but wastes information the exact test uses.
     """
-    a, b = paired_values(df, model_a, model_b, metric)
+    a, b = paired_values(df, model_a, model_b, metric,
+                         on_unpaired=on_unpaired)
     if len(a) == 0:
         return ComparisonResult(model_a, model_b, metric, 0, np.nan, np.nan,
                                 np.nan, np.nan, np.nan, 1.0)
@@ -216,17 +291,19 @@ def holm_bonferroni(p_values: list[float], alpha: float = 0.05
 
 def significance_matrix(df: pd.DataFrame, models: list[str] | None = None,
                         metric: str = "accuracy", alpha: float = 0.05,
-                        n_boot: int = 5000, seed: int = 0) -> pd.DataFrame:
+                        n_boot: int = 5000, seed: int = 0,
+                        on_unpaired: str = "raise") -> pd.DataFrame:
     """Every pairwise comparison, corrected for multiplicity, with verdicts.
 
-    This is the table that answers "which of these differences are real?" — the
+    This is the table that answers "which of these differences are real?", the
     question a leaderboard alone cannot answer.
     """
     models = models or sorted(df["model"].dropna().unique())
     results: list[ComparisonResult] = []
     for i, a in enumerate(models):
         for b in models[i + 1:]:
-            results.append(compare_models(df, a, b, metric, n_boot, seed))
+            results.append(compare_models(df, a, b, metric, n_boot, seed,
+                                          on_unpaired=on_unpaired))
 
     usable = [r for r in results if r.n_pairs >= 2]
     if usable:
@@ -295,11 +372,12 @@ class PowerReport:
 
 
 def power_report(df: pd.DataFrame, metric: str = "accuracy",
-                 targets: tuple[float, ...] = (0.10, 0.05, 0.02)) -> PowerReport:
+                 targets: tuple[float, ...] = (0.10, 0.05, 0.02),
+                 on_unpaired: str = "raise") -> PowerReport:
     """How much resolution the current evalset actually has, and what it'd cost.
 
     `observed_std` is the standard deviation of the per-item *paired difference*
-    where two or more models exist — the quantity the test actually operates on.
+    where two or more models exist, the quantity the test actually operates on.
     Using the raw score spread instead would overstate the noise and demand a far
     larger evalset than necessary.
     """
@@ -307,7 +385,8 @@ def power_report(df: pd.DataFrame, metric: str = "accuracy",
     diffs: list[np.ndarray] = []
     for i, a in enumerate(models):
         for b in models[i + 1:]:
-            va, vb = paired_values(df, a, b, metric)
+            va, vb = paired_values(df, a, b, metric,
+                                   on_unpaired=on_unpaired)
             if len(va) >= 2:
                 diffs.append(va - vb)
 

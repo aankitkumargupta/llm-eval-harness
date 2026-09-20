@@ -1,0 +1,96 @@
+{"item_id": "water_supply_01", "query": "No water supply in Sector 14, Ward 9 since Monday morning. Tanker was promised but never came.", "item_type": "answerable", "gold_answer": "water_supply"}
+{"item_id": "water_supply_02", "query": "हमारे मोहल्ले (गली नंबर 4, रामनगर) में पिछले पाँच दिनों से नल का पानी नहीं आ रहा है।", "item_type": "answerable", "gold_answer": "water_supply"}
+{"item_id": "water_supply_03", "query": "Paani ka pressure itna kam hai ki upar ke floor tak paani nahi pahunchta. Please pipeline check karein.", "item_type": "answerable", "gold_answer": "water_supply"}
+{"item_id": "water_supply_04", "query": "The water we receive is muddy and smells bad. Two children in the building fell ill this week.", "item_type": "answerable", "gold_answer": "water_supply"}
+{"item_id": "water_supply_05", "query": "नई पानी की लाइन के कनेक्शन के लिए आवेदन दिया था, 40 दिन हो गए, कोई जवाब नहीं आया।", "item_type": "answerable", "gold_answer": "water_supply"}
+{"item_id": "water_supply_06", "query": "Water meter reading wrong, bill shows 48,000 litres for a 2 person house. Please re-check meter.", "item_type": "answerable", "gold_answer": "water_supply"}
+{"item_id": "water_supply_07", "query": "Sadak ke beech main pipe phat gayi hai aur paani bah raha hai 3 din se. Koi dekhne nahi aaya.", "item_type": "answerable", "gold_answer": "water_supply"}
+{"item_id": "water_supply_08", "query": "Handpump near the anganwadi in Dhanpur village is broken; women are walking 2 km for water.", "item_type": "answerable", "gold_answer": "water_supply"}
+{"item_id": "water_supply_09", "query": "Sumer supply timing 6 to 7 am is too short, please extend water supply time in Block C.", "item_type": "answerable", "gold_answer": "water_supply"}
+{"item_id": "electricity_01", "query": "Power cut every evening 7 to 10 pm for the last two weeks in Gandhi Colony. No notice, no reason.", "item_type": "answerable", "gold_answer": "electricity"}
+{"item_id": "electricity_02", "query": "बिजली का बिल इस महीने 9,400 रुपये आया है जबकि पिछले महीनों में 1,200 के आसपास आता था। मीटर की जाँच करवाएँ।", "item_type": "answerable", "gold_answer": "electricity"}
+{"item_id": "electricity_03", "query": "Transformer near bus stand sparks and makes loud noise at night, bahut khatarnaak hai, please replace.", "item_type": "answerable", "gold_answer": "electricity"}
+{"item_id": "electricity_04", "query": "New connection applied 2 months ago, deposit paid, still no meter installed. Application no. EL-2291.", "item_type": "answerable", "gold_answer": "electricity"}
+{"item_id": "electricity_05", "query": "हमारे गाँव में बिजली के तार बहुत नीचे लटक रहे हैं, बच्चों के लिए खतरा है।", "item_type": "answerable", "gold_answer": "electricity"}
+{"item_id": "electricity_06", "query": "Street lights on the main road of Vikas Nagar are off since Diwali. Dark and unsafe at night.", "item_type": "answerable", "gold_answer": "electricity"}
+{"item_id": "electricity_07", "query": "Meter reader nahi aata, har baar average bill bhej dete hain. Actual reading ke hisaab se bill chahiye.", "item_type": "answerable", "gold_answer": "electricity"}
+{"item_id": "electricity_08", "query": "Voltage fluctuation damaged our fridge and TV. Request compensation and line inspection.", "item_type": "answerable", "gold_answer": "electricity"}
+{"item_id": "roads_and_transport_01", "query": "Huge potholes on Station Road between the temple and the school; two accidents last week.", "item_type": "answerable", "gold_answer": "roads_and_transport"}
+{"item_id": "roads_and_transport_02", "query": "पंचायत भवन से मुख्य सड़क तक की कच्ची सड़क बरसात में पूरी तरह कीचड़ हो जाती है, पक्की सड़क बनवाएँ।", "item_type": "answerable", "gold_answer": "roads_and_transport"}
+{"item_id": "roads_and_transport_03", "query": "City bus route 27 has stopped coming to our stop after 8 pm. Office workers are stranded.", "item_type": "answerable", "gold_answer": "roads_and_transport"}
+{"item_id": "roads_and_transport_04", "query": "Speed breaker ke upar koi paint nahi hai, raat ko dikhta nahi, do-pahiya wale gir rahe hain.", "item_type": "answerable", "gold_answer": "roads_and_transport"}
+{"item_id": "roads_and_transport_05", "query": "The footpath outside the district hospital is dug up for 3 months and never repaired.", "item_type": "answerable", "gold_answer": "roads_and_transport"}
+{"item_id": "roads_and_transport_06", "query": "गली में नाली की खुदाई के बाद सड़क वापस नहीं बनाई गई, गाड़ी निकालना मुश्किल है।", "item_type": "answerable", "gold_answer": "roads_and_transport"}
+{"item_id": "roads_and_transport_07", "query": "Auto drivers at the railway station refuse to go by meter and overcharge, no prepaid booth.", "item_type": "answerable", "gold_answer": "roads_and_transport"}
+{"item_id": "roads_and_transport_08", "query": "Bridge on the Kalindi nala has a crack, heavy vehicles still using it. Please inspect urgently.", "item_type": "answerable", "gold_answer": "roads_and_transport"}
+{"item_id": "sanitation_01", "query": "Garbage has not been collected from our lane for 9 days. Dogs and flies everywhere.", "item_type": "answerable", "gold_answer": "sanitation"}
+{"item_id": "sanitation_02", "query": "हमारी गली की नाली बंद है और गंदा पानी घरों के सामने जमा हो रहा है।", "item_type": "answerable", "gold_answer": "sanitation"}
+{"item_id": "sanitation_03", "query": "Public toilet near the market is locked since two weeks, log sadak par hi jaate hain.", "item_type": "answerable", "gold_answer": "sanitation"}
+{"item_id": "sanitation_04", "query": "Overflowing sewer manhole on Lake View Road, sewage entering ground floor houses.", "item_type": "answerable", "gold_answer": "sanitation"}
+{"item_id": "sanitation_05", "query": "कूड़ा उठाने वाली गाड़ी हफ्ते में सिर्फ एक बार आती है, रोज़ाना आनी चाहिए।", "item_type": "answerable", "gold_answer": "sanitation"}
+{"item_id": "sanitation_06", "query": "Dead animal lying near the school gate since yesterday, please remove, bachhe udhar se guzarte hain.", "item_type": "answerable", "gold_answer": "sanitation"}
+{"item_id": "sanitation_07", "query": "Open dumping ground next to the housing colony is being burnt at night, smoke enters homes.", "item_type": "answerable", "gold_answer": "sanitation"}
+{"item_id": "sanitation_08", "query": "Fogging for mosquitoes has not been done this season, dengue cases rising in Ward 3.", "item_type": "answerable", "gold_answer": "sanitation"}
+{"item_id": "ration_and_pds_01", "query": "Ration shop dealer gives only 3 kg wheat instead of 5 kg per person and says stock is short.", "item_type": "answerable", "gold_answer": "ration_and_pds"}
+{"item_id": "ration_and_pds_02", "query": "मेरा राशन कार्ड ई-केवाईसी के बाद भी पोर्टल पर निष्क्रिय दिखा रहा है, दो महीने से अनाज नहीं मिला।", "item_type": "answerable", "gold_answer": "ration_and_pds"}
+{"item_id": "ration_and_pds_03", "query": "Ration wale ne biometric fail bata kar do baar wapas bhej diya, ab kya karein?", "item_type": "answerable", "gold_answer": "ration_and_pds"}
+{"item_id": "ration_and_pds_04", "query": "Applied to add my newborn daughter to the ration card in March; no update on the application.", "item_type": "answerable", "gold_answer": "ration_and_pds"}
+{"item_id": "ration_and_pds_05", "query": "उचित मूल्य की दुकान महीने में सिर्फ 4 दिन खुलती है और उसी में भीड़ लग जाती है।", "item_type": "answerable", "gold_answer": "ration_and_pds"}
+{"item_id": "ration_and_pds_06", "query": "Dealer is charging Rs 2 per kg extra on rice, receipt nahi deta.", "item_type": "answerable", "gold_answer": "ration_and_pds"}
+{"item_id": "ration_and_pds_07", "query": "My ration card shows the wrong village after migration; cannot draw grain at the new shop.", "item_type": "answerable", "gold_answer": "ration_and_pds"}
+{"item_id": "ration_and_pds_08", "query": "Kerosene entitlement removed from our card without any notice; we have no LPG connection.", "item_type": "answerable", "gold_answer": "ration_and_pds"}
+{"item_id": "pension_and_welfare_01", "query": "My mother's widow pension has not been credited for 4 months. Account is active, nothing received.", "item_type": "answerable", "gold_answer": "pension_and_welfare"}
+{"item_id": "pension_and_welfare_02", "query": "वृद्धावस्था पेंशन का आवेदन एक साल पहले किया था, जीवन प्रमाण भी जमा किया, अब तक स्वीकृत नहीं हुआ।", "item_type": "answerable", "gold_answer": "pension_and_welfare"}
+{"item_id": "pension_and_welfare_03", "query": "Disability certificate hai phir bhi divyang pension form reject ho gaya, reason nahi bataya.", "item_type": "answerable", "gold_answer": "pension_and_welfare"}
+{"item_id": "pension_and_welfare_04", "query": "The scholarship amount for my son's class 11 was sanctioned but never transferred to the account.", "item_type": "answerable", "gold_answer": "pension_and_welfare"}
+{"item_id": "pension_and_welfare_05", "query": "पेंशन की राशि 1,000 से घटाकर 500 कर दी गई है, बिना किसी सूचना के।", "item_type": "answerable", "gold_answer": "pension_and_welfare"}
+{"item_id": "pension_and_welfare_06", "query": "Maternity benefit ki second kisht 6 mahine se pending hai, aanganwadi wale kehte hain upar se atka hai.", "item_type": "answerable", "gold_answer": "pension_and_welfare"}
+{"item_id": "pension_and_welfare_07", "query": "Housing scheme instalment stopped after the first payment; house is half built.", "item_type": "answerable", "gold_answer": "pension_and_welfare"}
+{"item_id": "pension_and_welfare_08", "query": "Life certificate submitted in November but pension portal still shows it as pending.", "item_type": "answerable", "gold_answer": "pension_and_welfare"}
+{"item_id": "land_records_01", "query": "The online land record shows my late father's name; mutation to my name is pending for 18 months.", "item_type": "answerable", "gold_answer": "land_records"}
+{"item_id": "land_records_02", "query": "खसरा नंबर 112 में हमारी ज़मीन का रकबा गलत दर्ज है, 0.8 हेक्टेयर की जगह 0.3 दिखा रहा है।", "item_type": "answerable", "gold_answer": "land_records"}
+{"item_id": "land_records_03", "query": "Patwari ne naksha dene se mana kar diya bina reason ke, 3 baar chakkar laga chuka hoon.", "item_type": "answerable", "gold_answer": "land_records"}
+{"item_id": "land_records_04", "query": "Neighbour has encroached 2 feet into our plot; demarcation request filed in July, no survey yet.", "item_type": "answerable", "gold_answer": "land_records"}
+{"item_id": "land_records_05", "query": "जमीन की रजिस्ट्री हो गई पर दाखिल-खारिज के लिए कार्यालय पैसे माँग रहा है।", "item_type": "answerable", "gold_answer": "land_records"}
+{"item_id": "land_records_06", "query": "Certified copy of the sale deed applied 5 weeks ago; office says record room is closed.", "item_type": "answerable", "gold_answer": "land_records"}
+{"item_id": "land_records_07", "query": "Bhulekh portal par mera naam galat spelling se hai, correction ka koi option nahi mil raha.", "item_type": "answerable", "gold_answer": "land_records"}
+{"item_id": "land_records_08", "query": "Two different khatas show the same survey number; bank refuses loan until it is resolved.", "item_type": "answerable", "gold_answer": "land_records"}
+{"item_id": "police_and_safety_01", "query": "My phone was stolen at the bus stand on 3 March; the police station refused to register an FIR.", "item_type": "answerable", "gold_answer": "police_and_safety"}
+{"item_id": "police_and_safety_02", "query": "रात में हमारी कॉलोनी में लगातार चोरियाँ हो रही हैं, पुलिस गश्त बढ़ाई जाए।", "item_type": "answerable", "gold_answer": "police_and_safety"}
+{"item_id": "police_and_safety_03", "query": "Mohalle ke ladke roz raat ko sharaab pee kar hungama karte hain, koi karyavahi nahi hoti.", "item_type": "answerable", "gold_answer": "police_and_safety"}
+{"item_id": "police_and_safety_04", "query": "Complaint of domestic violence given at the women's help desk; no follow-up in 20 days.", "item_type": "answerable", "gold_answer": "police_and_safety"}
+{"item_id": "police_and_safety_05", "query": "ट्रैफिक पुलिस बिना रसीद के चालान के नाम पर पैसे ले रही है, चौराहा नंबर 5 पर।", "item_type": "answerable", "gold_answer": "police_and_safety"}
+{"item_id": "police_and_safety_06", "query": "Eve teasing outside the girls' college every evening, we have written twice, nothing done.", "item_type": "answerable", "gold_answer": "police_and_safety"}
+{"item_id": "police_and_safety_07", "query": "Passport verification report pending at the local thana for 45 days, application on hold.", "item_type": "answerable", "gold_answer": "police_and_safety"}
+{"item_id": "police_and_safety_08", "query": "Illegal parking mafia collecting money outside the hospital, threatens people who refuse.", "item_type": "answerable", "gold_answer": "police_and_safety"}
+{"item_id": "health_services_01", "query": "PHC in Rampur has had no doctor for three weeks; the pharmacist is treating patients.", "item_type": "answerable", "gold_answer": "health_services"}
+{"item_id": "health_services_02", "query": "सरकारी अस्पताल में दवाइयाँ नहीं मिल रहीं, बाहर से खरीदने को कहा जाता है।", "item_type": "answerable", "gold_answer": "health_services"}
+{"item_id": "health_services_03", "query": "Ambulance number 108 pe call kiya, 1 ghante tak nahi aayi, patient ko auto mein le jana pada.", "item_type": "answerable", "gold_answer": "health_services"}
+{"item_id": "health_services_04", "query": "Health card shows my treatment as approved but the hospital is demanding cash payment.", "item_type": "answerable", "gold_answer": "health_services"}
+{"item_id": "health_services_05", "query": "टीकाकरण शिविर की तारीख बदल दी गई और किसी को सूचना नहीं दी गई, बच्चे बिना टीके के लौटे।", "item_type": "answerable", "gold_answer": "health_services"}
+{"item_id": "health_services_06", "query": "Lab reports at the district hospital take 10 days; private labs give them the same day.", "item_type": "answerable", "gold_answer": "health_services"}
+{"item_id": "health_services_07", "query": "Ward mein ek bhi nurse raat ko nahi rehti, mareez ke rishtedaar hi sab karte hain.", "item_type": "answerable", "gold_answer": "health_services"}
+{"item_id": "health_services_08", "query": "Anganwadi is not distributing the take-home ration for pregnant women this month.", "item_type": "answerable", "gold_answer": "health_services"}
+{"item_id": "education_01", "query": "The government primary school in Tikri has only one teacher for five classes.", "item_type": "answerable", "gold_answer": "education"}
+{"item_id": "education_02", "query": "मिड-डे मील में हफ्ते से सिर्फ चावल दिया जा रहा है, दाल-सब्ज़ी नहीं।", "item_type": "answerable", "gold_answer": "education"}
+{"item_id": "education_03", "query": "School ka building ki chhat se paani tapakta hai, class 3 ke bachhe baramde mein baithte hain.", "item_type": "answerable", "gold_answer": "education"}
+{"item_id": "education_04", "query": "Scholarship form portal keeps rejecting the caste certificate upload, deadline is next week.", "item_type": "answerable", "gold_answer": "education"}
+{"item_id": "education_05", "query": "कक्षा 9 की मुफ्त किताबें अभी तक नहीं मिलीं, सत्र शुरू हुए तीन महीने हो गए।", "item_type": "answerable", "gold_answer": "education"}
+{"item_id": "education_06", "query": "Private school is demanding capitation fee for admission under the 25% quota seat.", "item_type": "answerable", "gold_answer": "education"}
+{"item_id": "education_07", "query": "Transfer certificate is being withheld by the school until we pay a 'development fee'.", "item_type": "answerable", "gold_answer": "education"}
+{"item_id": "education_08", "query": "Girls' toilet in the high school has been out of order for the whole year.", "item_type": "answerable", "gold_answer": "education"}
+{"item_id": "other_01", "query": "My income certificate application has been 'under process' on the e-district portal for 50 days.", "item_type": "answerable", "gold_answer": "other"}
+{"item_id": "other_02", "query": "जन्म प्रमाण पत्र में बच्चे का नाम गलत छपा है, सुधार के लिए कहाँ आवेदन करें?", "item_type": "answerable", "gold_answer": "other"}
+{"item_id": "other_03", "query": "Aadhaar update centre in the block office is closed every time I go, koi timing nahi likhi hai.", "item_type": "answerable", "gold_answer": "other"}
+{"item_id": "other_04", "query": "Stray cattle sit in the middle of the highway near the toll plaza; accidents almost daily.", "item_type": "answerable", "gold_answer": "other"}
+{"item_id": "other_05", "query": "पंचायत की बैठक की सूचना समय पर नहीं दी जाती, ग्रामसभा में कोई नहीं पहुँच पाता।", "item_type": "answerable", "gold_answer": "other"}
+{"item_id": "other_06", "query": "Bank correspondent in our village charges Rs 50 for every withdrawal from the Jan Dhan account.", "item_type": "answerable", "gold_answer": "other"}
+{"item_id": "other_07", "query": "Loudspeakers at the weekly market run till midnight; senior citizens cannot sleep.", "item_type": "answerable", "gold_answer": "other"}
+{"item_id": "other_08", "query": "Marriage certificate issued with the wrong date; the registrar's office says it cannot be corrected online.", "item_type": "answerable", "gold_answer": "other"}
+{"item_id": "sanitation_09", "query": "Blocked drain outside the ration shop floods the street every evening; shop is closing early because of it.", "item_type": "answerable", "gold_answer": "sanitation"}
+{"item_id": "water_supply_10", "query": "Water pipeline broke during road repair work; road contractor left and now the lane has no water.", "item_type": "answerable", "gold_answer": "water_supply"}
+{"item_id": "health_services_09", "query": "Mosquito breeding in the open drain behind the hospital; patients are getting dengue inside the ward.", "item_type": "answerable", "gold_answer": "health_services"}
+{"item_id": "police_and_safety_09", "query": "Street lights off for a month on the road to the girls' hostel and there were two chain-snatching incidents.", "item_type": "answerable", "gold_answer": "police_and_safety"}
+{"item_id": "pension_and_welfare_09", "query": "Old-age pension stopped because the bank says the Aadhaar seeding failed; bank sends me to the block office and back.", "item_type": "answerable", "gold_answer": "pension_and_welfare"}
+{"item_id": "land_records_09", "query": "Panchayat built a drain across the corner of my plot without notice and the record still shows the full area as mine.", "item_type": "answerable", "gold_answer": "land_records"}
+{"item_id": "education_09", "query": "School van charges doubled without notice and the driver is unlicensed; the school says it is not their vehicle.", "item_type": "answerable", "gold_answer": "education"}

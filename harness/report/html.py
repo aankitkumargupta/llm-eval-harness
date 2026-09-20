@@ -2,7 +2,7 @@
 Self-contained HTML report.
 
 A benchmark result that lives in a terminal buffer or a Parquet file reaches
-exactly one person. The decision it informs is usually made by several — an
+exactly one person. The decision it informs is usually made by several, an
 engineer, whoever owns the budget, sometimes whoever owns the risk. This writes
 a single file with no external assets, so it can be attached to a ticket, mailed,
 or committed as a build artifact.

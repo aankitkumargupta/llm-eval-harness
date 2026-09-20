@@ -1,0 +1,14 @@
+arc_easy_test_20.jsonl: the first 20 rows of the ARC-Easy test split,
+byte-identical to the lines the harness fetcher caches from the HuggingFace
+mirror allenai/ai2_arc, config ARC-Easy (https://huggingface.co/datasets/allenai/ai2_arc).
+
+Source: Clark, Cowhey, Etzioni, Khot, Sabharwal, Schoenick, Tafjord. "Think you
+have Solved Question Answering? Try ARC, the AI2 Reasoning Challenge." 2018.
+https://allenai.org/data/arc
+
+Licence: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/).
+Attribution: Allen Institute for AI. This fixture is redistributed unmodified
+under the same licence.
+
+This is a test fixture only. It is not the dataset; run
+`python main.py bench fetch --benchmark arc_easy` for the real split.

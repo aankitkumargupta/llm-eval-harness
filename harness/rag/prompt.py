@@ -1,5 +1,5 @@
 """
-Prompt assembly (pipeline step 5) — the single most important tuning knob.
+Prompt assembly (pipeline step 5), the single most important tuning knob.
 
 In the BASELINE pass this template is fixed and identical for every model. In the
 ADAPTED pass, tuning may change the system prompt, the few-shot exemplars, and
@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from ..store.schema import RetrievedChunk, TaskType
 
 # A neutral default for the baseline pass. Instructs citation by chunk_id so
-# citation validity can be scored. Deliberately plain — the point of a baseline
+# citation validity can be scored. Deliberately plain, the point of a baseline
 # is that no model gets a hand-tailored advantage.
 DEFAULT_SYSTEM_PROMPT = (
     "You are a helpful assistant. Answer the user's question using ONLY the "
@@ -65,7 +65,7 @@ def _format_context(chunks: list[RetrievedChunk], order: str, limit: int,
     elif order == "shuffle":
         random.Random(seed).shuffle(selected)
     elif order == "middle_gold" and gold_ids:
-        # Force the gold passage into the middle of the window — the position
+        # Force the gold passage into the middle of the window, the position
         # where long-context models most often lose it. A model that reads its
         # whole context is unaffected; a model that skims the ends falls over,
         # and that difference is invisible to any accuracy average.

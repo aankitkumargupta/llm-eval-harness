@@ -3,7 +3,7 @@ Background-job plumbing for the UI.
 
 A Job is a plain, thread-safe progress object. A worker thread updates it; the
 Streamlit UI polls it. Crucially the worker NEVER calls any Streamlit function
-(that would fail outside the script-run context) — it only mutates this object
+(that would fail outside the script-run context), it only mutates this object
 under a lock. The UI reads it and renders.
 
 The JOBS registry is module-level so it survives Streamlit's per-interaction

@@ -1,0 +1,58 @@
+# BoolQ, yes/no reading comprehension over a Wikipedia passage.
+#
+# Two-way, so chance is 0.5 and a raw accuracy of 0.62 is nearly nothing:
+# the validation split is ~62% "yes", and a model that always says yes lands
+# there. Read the chance-adjusted column, not the raw one.
+id: boolq
+version: 1
+family: classify
+task: direct
+
+source:
+  kind: hf
+  ref: google/boolq
+  config: default
+  split: validation      # the canonical scored split; test labels are not public
+  # Pinned from `bench fetch --benchmark boolq --limit 300`: the first 300
+  # rows of the split, matching the row-limited fetches the other HF specs pin.
+  checksum: "sha256:3a01326f74fbe8d7f3787957e25ca6fd9bee011619595d288e32f845ba327137"
+  licence: CC-BY-SA-3.0
+  commercial_use: true   # BY-SA permits commercial use; SA binds redistributed copies
+  citation: "Clark et al., 2019: BoolQ: Exploring the Surprising Difficulty of Natural Yes/No Questions"
+
+sampling: {limit: null, seed: 1729, stratify_by: "", samples_per_item: 1}
+
+prompt:
+  template: ""
+  few_shot: {n: 0, selection: fixed, pool_split: train}
+  system: null
+  # A one-word answer plus a short justification fits comfortably; the budget
+  # is generous so a model that reasons first is truncated rather than blamed.
+  decoding: {temperature: 0.0, max_tokens: 512, top_p: 1.0}
+
+scoring:
+  mode: generative
+  extraction:
+    chain:
+      # 1. A leading yes/no, tolerating markdown and an "Answer:" prefix.
+      - {kind: regex, pattern: '^\W*(?:answer\s*:?\s*\W*)?(yes|no)\b'}
+      # 2. Either label anywhere in the reply (substring match, longest wins).
+      #    QUOTED on purpose: YAML 1.1 reads a bare `yes`/`no` as a boolean,
+      #    and a boolean label crashes the extractor instead of matching.
+      - {kind: label_set, labels: ["yes", "no"]}
+      # 3. Nothing matched: extraction failure, reported as its own rate (I7).
+  metric: accuracy
+  chance_level: 0.5      # TWO labels
+  aggregate: [mean]
+
+# The label alphabet. Informational for a direct task, but it feeds spec_hash
+# so a spec that scores a different alphabet is a different spec. Quoted for
+# the same YAML-boolean reason as the chain above.
+label_set: ["yes", "no"]
+
+reporting:
+  primary_metric: accuracy
+  also: [accuracy_chance_adjusted, extraction_failure_rate,
+         format_violation_rate, truncation_rate, cost_usd, latency_p95_ms]
+
+contamination: {canary: false, ngram_overlap_against: null, perturbations: []}

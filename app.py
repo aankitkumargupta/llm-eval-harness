@@ -9,7 +9,7 @@ screen lives in `harness/ui/screens/`, so adding one is a class plus a registry
 entry and nothing here changes.
 
 That split matters for more than tidiness. The previous version used tabs, and
-Streamlit executes *every* tab body on *every* rerun — so moving one slider did
+Streamlit executes *every* tab body on *every* rerun, so moving one slider did
 the work of all six screens. A rail with a single selected page runs one.
 
 Design choices for a self-contained single-user app:
@@ -81,7 +81,7 @@ def _profiles_on_disk() -> list[str]:
     """App-created profiles, discovered from the workspace.
 
     Read from disk rather than session state so a reload does not lose which
-    datasets exist — the tabbed version showed a fresh install on every refresh
+    datasets exist, the tabbed version showed a fresh install on every refresh
     while the data sat right there.
     """
     if not DATA_DIR.exists():

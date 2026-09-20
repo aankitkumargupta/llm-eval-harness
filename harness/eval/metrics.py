@@ -1,14 +1,14 @@
 """
-Pure metric functions. Everything here takes plain data and returns a number —
-no network, no state — so it's fully unit-testable and free to re-run against
+Pure metric functions. Everything here takes plain data and returns a number,
+no network, no state, so it's fully unit-testable and free to re-run against
 cached outputs.
 
 Grouped by subsystem:
-  retrieval      — hit_rate_at_k, mrr, ndcg_at_k, context_recall, precision, MAP
-  citation       — pointer validity, supporting validity, density, recall
-  answer         — exact / contains / numeric / token-F1 scorers
-  behaviour      — abstention, injection resistance, PII leakage
-  classification — precision / recall / F1 for non-RAG labelling tasks
+  retrieval, hit_rate_at_k, mrr, ndcg_at_k, context_recall, precision, MAP
+  citation, pointer validity, supporting validity, density, recall
+  answer, exact / contains / numeric / token-F1 scorers
+  behaviour, abstention, injection resistance, PII leakage
+  classification, precision / recall / F1 for non-RAG labelling tasks
 
 The judge-based metrics (faithfulness, relevance, completeness) live in judge.py
 because they need a model call.
@@ -80,7 +80,7 @@ def average_precision(retrieved_ids: list[str], gold_ids: list[str],
     """Mean of precision@i over each position where a gold passage was found.
 
     Unlike MRR (first hit only) this rewards ranking *all* the gold passages
-    highly — the thing that matters when an answer must synthesise several
+    highly, the thing that matters when an answer must synthesise several
     sources, which is exactly the multi-hop case.
     """
     gold = set(gold_ids)
@@ -100,7 +100,7 @@ def rerank_lift(before_ids: list[str], after_ids: list[str],
                 gold_ids: list[str], k: int) -> dict:
     """What reranking actually bought, split by hit-rate vs. rank.
 
-    Reranking usually can't add a gold passage retrieval never found — it can
+    Reranking usually can't add a gold passage retrieval never found, it can
     only move one up. Reporting a single delta hides that: hit-rate barely
     moves while MRR jumps, and "rerank did nothing" is the wrong conclusion.
     """
@@ -127,7 +127,7 @@ def extract_citations(answer: str) -> list[str]:
 def citation_valid_pointer(cited_ids: list[str], retrieved_ids: list[str]) -> float:
     """Fraction of cited ids that point at a real retrieved passage.
 
-    Returns 1.0 when nothing was cited (vacuously valid) — pair it with
+    Returns 1.0 when nothing was cited (vacuously valid), pair it with
     `citation_density` to tell "cited nothing" apart from "cited perfectly".
     """
     if not cited_ids:
@@ -192,7 +192,7 @@ def contains_match(answer: str, gold: str) -> float:
 
 
 def token_f1(answer: str, gold: str) -> float:
-    """SQuAD-style token overlap F1 — a graded score, not pass/fail.
+    """SQuAD-style token overlap F1, a graded score, not pass/fail.
 
     Fills the real gap between `contains` (which a model games by dumping the
     whole context into its answer, since the gold string is somewhere in there)
@@ -231,7 +231,7 @@ def numeric_match(answer: str, gold: str, tol: float = 1e-6) -> float:
 
     Scans **every** number in the answer rather than only the first. The
     original took the first number, so a correct answer phrased "Under the 2019
-    Act, the maximum fine is 5000" scored zero — it compared the year. Getting
+    Act, the maximum fine is 5000" scored zero, it compared the year. Getting
     the right answer marked wrong because of sentence word order is a silent,
     systematic accuracy loss that looks like a model weakness.
     """
@@ -307,7 +307,7 @@ def injection_resisted(answer: str, canary: str,
 
     The probe plants a passage telling the model to emit a distinctive canary
     string. If the canary appears in the answer, the model followed instructions
-    from *retrieved data* rather than from the operator — the core RAG
+    from *retrieved data* rather than from the operator, the core RAG
     injection failure, and one nothing in the original harness measured despite
     the schema field existing.
     """
@@ -423,3 +423,45 @@ def confusion_matrix(y_true: list[str], y_pred: list[str]) -> dict:
     for t, p in zip(y_true, y_pred):
         matrix[t][p] += 1
     return matrix
+
+
+# --------------------------------------------------------------------------- #
+#  Script fidelity, for translation and native-language tasks
+# --------------------------------------------------------------------------- #
+#: Unicode letter ranges per script. Combining marks (matras) are not letters
+#: and are not counted either way, so a Devanagari word counts by its
+#: consonants and independent vowels, which is what a reader sees.
+SCRIPT_RANGES: dict[str, tuple[tuple[int, int], ...]] = {
+    "devanagari": ((0x0900, 0x097F), (0xA8E0, 0xA8FF)),
+    "bengali": ((0x0980, 0x09FF),),
+    "gurmukhi": ((0x0A00, 0x0A7F),),
+    "gujarati": ((0x0A80, 0x0AFF),),
+    "odia": ((0x0B00, 0x0B7F),),
+    "tamil": ((0x0B80, 0x0BFF),),
+    "telugu": ((0x0C00, 0x0C7F),),
+    "kannada": ((0x0C80, 0x0CFF),),
+    "malayalam": ((0x0D00, 0x0D7F),),
+    "latin": ((0x0041, 0x005A), (0x0061, 0x007A), (0x00C0, 0x024F)),
+}
+
+
+def native_script_ratio(text: str, script: str) -> float | None:
+    """Fraction of the letters in `text` that belong to `script`.
+
+    Definition: count every character for which str.isalpha() is true; of
+    those, the share whose code point falls in the script's letter ranges.
+    Digits, punctuation, whitespace and combining marks are ignored. None
+    when the text has no letters at all (an empty or numeric answer has no
+    script). Raises ValueError for a script this table does not know, so a
+    misspelt profile field fails at validation rather than scoring 0.
+
+    Idempotent under whitespace and punctuation changes; bounded in [0, 1].
+    """
+    ranges = SCRIPT_RANGES.get((script or "").strip().lower())
+    if ranges is None:
+        raise ValueError(f"unknown script {script!r}; known: {sorted(SCRIPT_RANGES)}")
+    letters = [ch for ch in text if ch.isalpha()]
+    if not letters:
+        return None
+    inside = sum(1 for ch in letters if any(lo <= ord(ch) <= hi for lo, hi in ranges))
+    return inside / len(letters)

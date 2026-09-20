@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Eval Harness</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- The task bar. Two tiers, because seventeen screens do not fit in one
+       row and a row that scrolls sideways hides half the product. Tier one is
+       the stage of work you are in; tier two is the screens inside it. -->
+  <header class="topbar">
+    <div class="barrow">
+      <a class="brand" href="#" data-view="overview">
+        <span class="mark"></span>
+        <div><b>Eval Harness</b><span>model evaluation</span></div>
+      </a>
+
+      <nav class="tabs" id="sections" aria-label="Sections"></nav>
+
+      <div class="util">
+        <span id="storeline" class="storeline">loading…</span>
+        <button id="themebtn" class="iconbtn" title="Switch theme"
+                aria-label="Switch theme">◐</button>
+      </div>
+
+      <button id="menubtn" class="iconbtn menubtn" aria-expanded="false"
+              aria-label="Menu">☰</button>
+    </div>
+
+    <div class="subbar" id="subbar" aria-label="Screens"></div>
+  </header>
+
+  <main id="main"><div class="empty"><span class="spin"></span>Loading…</div></main>
+</div>
+<script type="module" src="/app.js"></script>
+</body>
+</html>

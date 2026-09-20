@@ -1,0 +1,53 @@
+# GSM8K, grade-school maths, scored on the final number.
+id: gsm8k
+version: 1
+family: math
+task: direct
+
+source:
+  kind: local
+  ref: tests/bench/fixtures/gsm8k_synthetic.jsonl
+  split: test
+  checksum: ""
+  licence: MIT
+  commercial_use: true
+  citation: "Cobbe et al., 2021 (GSM8K)"
+
+sampling:
+  limit: null
+  seed: 1729
+  stratify_by: ""
+  # Raise this above 1 to get pass@k and seed variance. Worth doing for maths:
+  # a single greedy sample understates a model that is usually right.
+  samples_per_item: 1
+
+prompt:
+  template: ""
+  few_shot: {n: 0, selection: fixed, pool_split: train}
+  system: null
+  # Larger than the MC budget on purpose: this is a reasoning task, and a
+  # 32-token ceiling would truncate every chain of thought and read as a
+  # quality finding. (The harness already learned this the hard way on the
+  # support_triage profile.)
+  decoding: {temperature: 0.0, max_tokens: 1024, top_p: 1.0}
+
+scoring:
+  mode: generative
+  extraction:
+    chain:
+      - {kind: regex, pattern: '####\s*(-?[\d,\.]+)'}
+      - {kind: boxed}
+      - {kind: numeric}
+  metric: accuracy
+  chance_level: 0.0        # open-ended numeric: guessing wins nothing
+  aggregate: [mean]
+
+reporting:
+  primary_metric: accuracy
+  also: [extraction_failure_rate, refusal_rate, truncation_rate, cost_usd,
+         cost_per_correct_answer, latency_p95_ms]
+
+contamination:
+  canary: false
+  ngram_overlap_against: null
+  perturbations: [numeral_change]

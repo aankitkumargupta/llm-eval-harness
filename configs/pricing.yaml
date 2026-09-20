@@ -21,6 +21,17 @@ models:
   "Qwen/Qwen2.5-7B-Instruct-Turbo":           {input: 0.30, output: 0.30}
   "meta-llama/Llama-3.3-70B-Instruct-Turbo":  {input: 0.88, output: 0.88}
 
+  # --- Together, read from the provider's own /v1/models catalogue ---------
+  # Retrieved 2026-09-19 via `catalogue_pricing("together")`, i.e. the vendor's
+  # published rate rather than a transcription. ADDED, not edited: two existing
+  # entries below disagree with the live catalogue and were left alone, because
+  # §7 reserves a pricing change for a human. See docs/DEBT.md R-19.
+  "zai-org/GLM-5.3-Flash":                    {input: 0.15,  output: 0.50}
+  "deepseek-ai/DeepSeek-V4-Flash-0731":       {input: 0.14,  output: 0.28}
+  # Added 2026-09-19 for the five-model RAG comparison, same source and rule.
+  "zai-org/GLM-5.3":                          {input: 1.40,  output: 4.40}
+  "moonshotai/Kimi-K3":                       {input: 3.00,  output: 15.00}
+
   # --- Anthropic (first-party API list prices) -----------------------------
   # Bedrock / Vertex are partner-operated and priced separately; if you route
   # through them, replace these with the partner's rates.
@@ -48,6 +59,16 @@ models:
   # "ollama:llama3.1:8b":                     {input: 0.0, output: 0.0}
 
 embeddings:
+  # --- Local (FastEmbed, CPU) ----------------------------------------------
+  # Marginal token cost is zero; keyed with the `local:` prefix so this entry
+  # cannot be mistaken for Together's hosted copy of the same weights, which
+  # is not free. Present so the model is PRICED (at zero) rather than
+  # unpriced - an unpriced embedder is a validation failure (I3).
+  "local:BAAI/bge-base-en-v1.5":               {input: 0.0}
+  "local:BAAI/bge-small-en-v1.5":              {input: 0.0}
+  # Multilingual (hi/en) embedder used by the Indian-government RAG profiles.
+  "local:sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": {input: 0.0}
+
   # --- Together ------------------------------------------------------------
   "intfloat/multilingual-e5-large-instruct":   {input: 0.02}
   "BAAI/bge-large-en-v1.5":                    {input: 0.02}

@@ -1,0 +1,45 @@
+# MMLU-Pro, the real dataset, ten-way multiple choice.
+id: mmlu_pro_hf
+version: 1
+family: multiple_choice
+task: direct
+
+source:
+  kind: hf
+  ref: TIGER-Lab/MMLU-Pro
+  config: default
+  split: test
+  checksum: "sha256:1e2ee4e3ffc0c9ea2a6baf33630ed5ce648170c68586a4d68e05ee17b42b1fd2"
+  licence: MIT
+  commercial_use: true
+  citation: "Wang et al., 2024: MMLU-Pro"
+
+sampling:
+  limit: null
+  seed: 1729
+  stratify_by: subject    # per-stratum n is reported
+  samples_per_item: 1
+
+prompt:
+  template: ""
+  few_shot: {n: 0, selection: fixed, pool_split: validation}
+  system: null
+  decoding: {temperature: 0.0, max_tokens: 1024, top_p: 1.0}
+
+scoring:
+  mode: generative
+  extraction:
+    chain:
+      - {kind: regex, pattern: 'Answer:\s*\(?([A-J])\)?'}
+      - {kind: regex, pattern: '\*\*\s*\(?([A-J])\)?\s*\*\*'}
+      - {kind: last_capital_letter, max_option: J}
+  metric: accuracy
+  chance_level: 0.1       # TEN options
+  aggregate: [mean, "by:subject"]
+
+reporting:
+  primary_metric: accuracy
+  also: [accuracy_chance_adjusted, extraction_failure_rate,
+         format_violation_rate, truncation_rate, cost_usd, latency_p95_ms]
+
+contamination: {canary: false, ngram_overlap_against: null, perturbations: [option_shuffle]}

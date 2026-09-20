@@ -1,9 +1,9 @@
 """
 Retrieval (pipeline step 3): three modes plus RRF fusion.
 
-  dense  — cosine/dot over embeddings (semantic; catches paraphrase)
-  sparse — BM25 lexical (exact tokens: part numbers, statutes, error codes)
-  hybrid — run both, fuse ranks with Reciprocal Rank Fusion
+  dense, cosine/dot over embeddings (semantic; catches paraphrase)
+  sparse: BM25 lexical (exact tokens: part numbers, statutes, error codes)
+  hybrid, run both, fuse ranks with Reciprocal Rank Fusion
 
 RRF is score-agnostic: it merges ranked lists by *position*, so we never have to
 reconcile a cosine score against a BM25 score. That's why it's the default fusion.
@@ -13,18 +13,38 @@ Two fixes over the original:
 **A data race.** `retrieve()` used to stash the embedding model on `self`
 (`self._embed_model = cfg.embedding_model`) and read it back inside `_dense()`.
 One `Retriever` is shared across every worker thread in the throughput lane, so
-two threads with different configs — exactly what the tuning search produces —
+two threads with different configs, exactly what the tuning search produces,
 could interleave between the write and the read and embed a query with the wrong
 model. The corrupted retrieval would then be scored as a real result. It's now a
 parameter, so the config can't leak across threads.
 
 **Redundant embedding spend.** The same query is embedded once per model, per
-tuning candidate, per pass — the identical vector bought a hundred times over on
+tuning candidate, per pass, the identical vector bought a hundred times over on
 a 4-model, 20-candidate run. Query embeddings are now cached by (model, text).
+
+**A second data race, in the dependency.** Embedded Qdrant (`QdrantClient(path=...)`)
+is not designed for concurrent use, its own documentation says so, and the
+harness runs eight workers against it. Lazily built state (the BM25 model on
+the first `Document` query, per-collection search structures) is mutated
+without locks, so threads that arrive together fail with "dictionary changed
+size during iteration" or, once the model name cannot be resolved, fall into
+the dense path and raise "Dense vector bm25 is not found in the collection".
+Worse than the nine errored rows in the first live five-model run: after a
+lost race the process's sparse inference kept returning *wrong* lists without
+raising, so every item's hybrid retrieval was silently corrupted and the run
+scored at chance. Reproduced offline in tests/test_retrieval_race.py, with a
+correctness assertion, not just an exception count.
+
+A guard around only the first sparse inference was tried and was not enough,
+the dense path trips the same class of race. So every call into an EMBEDDED
+client is serialised under one process-wide lock. A query is microseconds;
+the LLM call it precedes is seconds; the lock is invisible. A server-mode
+client (HTTP) is thread-safe and is not locked.
 """
 
 from __future__ import annotations
 
+import threading
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -45,7 +65,7 @@ def reciprocal_rank_fusion(
     constant from the original RRF paper; it damps the influence of very high
     ranks so one list can't dominate on its top hit alone.
 
-    `weights` lets a profile bias the fusion — a corpus of statutes and part
+    `weights` lets a profile bias the fusion, a corpus of statutes and part
     numbers wants lexical weighted above semantic, and a paraphrase-heavy
     support corpus wants the reverse. Defaults to equal weighting.
     """
@@ -71,6 +91,26 @@ class RetrievalConfig:
     candidate_multiplier: int = 1
 
 
+#: Serialises every call into an embedded Qdrant (see the module docstring).
+#: Process-wide rather than per-Retriever because the unsafe state lives in
+#: the qdrant_client package and the collection files, not in any instance.
+_LOCAL_QDRANT_LOCK = threading.Lock()
+
+
+class _NoLock:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+def _is_embedded(qdrant) -> bool:
+    """True for `QdrantClient(path=...)` / `(":memory:")`, False for a server."""
+    inner = getattr(qdrant, "_client", None)
+    return type(inner).__name__ == "QdrantLocal"
+
+
 class Retriever:
     def __init__(self, client, qdrant: QdrantClient, collection: str,
                  cache=None, meter=None):
@@ -79,6 +119,10 @@ class Retriever:
         self.collection = collection
         self.cache = cache
         self.meter = meter
+        # Decided once: the lock is taken on every query for an embedded
+        # client and never for a server, and that must not depend on which
+        # thread asks.
+        self._qlock = _LOCAL_QDRANT_LOCK if _is_embedded(qdrant) else _NoLock()
 
     # ------------------------------------------------------------------ #
     def _points_to_chunks(self, points) -> list[RetrievedChunk]:
@@ -115,12 +159,13 @@ class Retriever:
         return vec
 
     def _dense(self, query: str, k: int, embedding_model: str) -> list[RetrievedChunk]:
-        # embedding_model is a parameter, not instance state — see module docstring.
+        # embedding_model is a parameter, not instance state, see module docstring.
         vec = self.embed_query(query, embedding_model)
-        res = self.qdrant.query_points(
-            collection_name=self.collection,
-            query=vec, using="dense", limit=k, with_payload=True,
-        ).points
+        with self._qlock:
+            res = self.qdrant.query_points(
+                collection_name=self.collection,
+                query=vec, using="dense", limit=k, with_payload=True,
+            ).points
         return self._points_to_chunks(res)
 
     def _sparse(self, query: str, k: int) -> list[RetrievedChunk]:
@@ -129,11 +174,12 @@ class Retriever:
     # during an ingest or a retrieval.
         from qdrant_client import models
 
-        res = self.qdrant.query_points(
-            collection_name=self.collection,
-            query=models.Document(text=query, model="Qdrant/bm25"),
-            using="bm25", limit=k, with_payload=True,
-        ).points
+        with self._qlock:
+            res = self.qdrant.query_points(
+                collection_name=self.collection,
+                query=models.Document(text=query, model="Qdrant/bm25"),
+                using="bm25", limit=k, with_payload=True,
+            ).points
         return self._points_to_chunks(res)
 
     def retrieve(self, query: str, cfg: RetrievalConfig) -> list[RetrievedChunk]:

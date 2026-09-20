@@ -4,7 +4,7 @@ Arena: pairwise head-to-head comparison for an Elo ranking.
 Separated from the passes because it is not one. The passes *generate* answers;
 the arena *reads* answers already in the store and only spends judge calls. It
 needs a reader, not a writer, and it produces comparisons rather than trace
-rows — a different collaborator set and a different output type, which is
+rows, a different collaborator set and a different output type, which is
 exactly the SRP argument for its own module.
 
 Why an arena at all, given there is already a weighted composite: a composite

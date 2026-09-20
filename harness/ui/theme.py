@@ -6,7 +6,7 @@ app and the dashboard. The point is that a reader learns the visual language
 once: blue always means "the thing under discussion", gray always means
 "context", and the status colours only ever mean status.
 
-The palette is not a taste call — it was run through a colour-vision validator
+The palette is not a taste call, it was run through a colour-vision validator
 before being written down. The categorical slots clear the CVD separation and
 normal-vision floors on both surfaces under the all-pairs rule that scatter and
 heatmap forms demand. Dark mode is a **selected** set of steps for the dark
@@ -19,7 +19,7 @@ Three rules the rest of the UI inherits:
   * **Status colours are reserved.** good/warning/critical never stand in for
     "series 3", and never carry meaning without a label beside them.
   * **Emphasis over categorical.** When one model is the answer and the rest are
-    context, that is one accent hue plus gray — not eight hues.
+    context, that is one accent hue plus gray, not eight hues.
 """
 
 from __future__ import annotations
@@ -153,7 +153,7 @@ def active_palette() -> Palette:
     reports the *browser's* preference, not the theme Streamlit actually
     applied: with `base = "dark"` in config and a light OS setting it returns
     `"light"` while the chrome renders dark. Trusting it first produced light
-    cards inside dark chrome — verified against a running app, not assumed.
+    cards inside dark chrome, verified against a running app, not assumed.
     """
     try:
         import streamlit as st

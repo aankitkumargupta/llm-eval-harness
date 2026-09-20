@@ -2,7 +2,7 @@
 Loading API keys from a `.env` file.
 
 `python-dotenv` was a declared dependency and both the README and the
-deployment guide told people to put their keys in `.env` — but nothing ever
+deployment guide told people to put their keys in `.env`, but nothing ever
 called `load_dotenv()`. The file was read by nobody. Following the documented
 setup produced "No API key for provider 'together'", with the key sitting right
 there in a file the app never opened.
@@ -57,7 +57,7 @@ def load_env(path: str | Path = ".env", override: bool = False) -> list[str]:
 def _parse(path: Path) -> dict[str, str]:
     """A minimal KEY=value reader, for when python-dotenv is not installed.
 
-    Handles comments, blank lines, `export` prefixes and surrounding quotes —
+    Handles comments, blank lines, `export` prefixes and surrounding quotes,
     the shapes a hand-written key file actually takes. Anything more exotic is
     what python-dotenv is for.
     """

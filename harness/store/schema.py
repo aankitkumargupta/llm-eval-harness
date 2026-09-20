@@ -3,8 +3,8 @@ Core data contracts for the evaluation harness.
 
 Two objects matter most:
 
-  EvalItem  — the unit of iteration: one question + its ground truth + a type tag.
-  TraceRow  — the flat, one-row-per-eval-item record produced by a single run.
+  EvalItem, the unit of iteration: one question + its ground truth + a type tag.
+  TraceRow, the flat, one-row-per-eval-item record produced by a single run.
 
 Design rules:
   * TraceRow holds ONLY per-item measurements. Cross-model aggregates
@@ -12,7 +12,7 @@ Design rules:
     `report` FROM these rows and never stored here.
   * Every metric field is Optional. A profile activates only a subset; inactive
     metrics stay None rather than 0.0, so "not measured" stays distinguishable
-    from "measured as zero". This is load-bearing — a metric defaulting to 0.0
+    from "measured as zero". This is load-bearing, a metric defaulting to 0.0
     would drag every mean built on it toward zero and silently penalise models
     on dimensions nobody evaluated.
   * `item_type` distinguishes normal items from behavioural probes, which are
@@ -29,7 +29,7 @@ from enum import Enum
 
 
 class ItemType(str, Enum):
-    """What kind of eval item this is — governs which metrics are meaningful."""
+    """What kind of eval item this is, governs which metrics are meaningful."""
     ANSWERABLE = "answerable"          # gold answer + gold passages exist in corpus
     UNANSWERABLE = "unanswerable"      # abstention probe: model should refuse
     NOISE_INJECTED = "noise_injected"  # robustness: distractor chunks in context
@@ -56,8 +56,8 @@ class TaskType(str, Enum):
 
     RAG was the only shape the harness originally supported, but most LLM
     evaluation isn't retrieval-augmented. DIRECT and CLASSIFY skip retrieval
-    entirely, which turns the same apparatus — matrix walk, cost metering,
-    caching, significance testing, regression gating — into a general-purpose
+    entirely, which turns the same apparatus, matrix walk, cost metering,
+    caching, significance testing, regression gating, into a general-purpose
     prompt evaluator instead of a RAG-only one.
     """
     RAG = "rag"              # retrieve -> prompt -> generate -> score
@@ -87,7 +87,7 @@ class EvalItem:
     meta: dict = field(default_factory=dict)
 
     # Optional human label, for judge calibration. When present, the report can
-    # measure how well the LLM judge agrees with a person — the only way to know
+    # measure how well the LLM judge agrees with a person, the only way to know
     # whether the judge's numbers mean anything.
     human_label: float | None = None
 
@@ -124,7 +124,7 @@ class TraceRow:
     item_type: ItemType
     ts: float = field(default_factory=time.time)
 
-    # Config hashes — the reproducibility anchor. Full configs live in the run
+    # Config hashes, the reproducibility anchor. Full configs live in the run
     # manifest; a row stores only hashes, pointing at an exact setup.
     profile_cfg_hash: str = ""
     retrieval_cfg_hash: str = ""
@@ -159,7 +159,7 @@ class TraceRow:
     completeness: float | None = None
     token_f1: float | None = None
     # Spread across an ensemble of judges. High values flag an ambiguous ITEM
-    # rather than a bad model — a dataset finding, not a model finding.
+    # rather than a bad model, a dataset finding, not a model finding.
     judge_disagreement: float | None = None
 
     # ---- citation-quality metrics ----------------------------------------
@@ -173,6 +173,10 @@ class TraceRow:
     abstention_correct: float | None = None
     injection_resisted: float | None = None   # ignored a hostile passage
     pii_leaked: float | None = None           # emitted PII absent from context
+    # Fraction of the answer's letters in the profile's target script (for
+    # translation and native-language tasks); None when the profile sets no
+    # target script or the answer has no letters. Additive (§3).
+    native_script_ratio: float | None = None
     consistency_group: str | None = None      # links paraphrases of one question
 
     # ---- classification (non-RAG profiles) -------------------------------
@@ -187,6 +191,16 @@ class TraceRow:
     # ---- efficiency metrics ----------------------------------------------
     prompt_tokens: int | None = None
     completion_tokens: int | None = None
+    # True when the counts above were estimated rather than read from the
+    # provider's usage block. Only reachable under an explicit opt-in; the
+    # report surfaces the rate, because a cost column that mixes measured and
+    # estimated figures without saying so is not a measurement (I3).
+    usage_estimated: bool | None = None
+    # Hidden reasoning (thinking) spent before the visible answer. Tokens as
+    # the provider reported them, None when it did not; chars of reasoning
+    # text returned beside the answer, 0 when none. Additive, nullable.
+    reasoning_tokens: int | None = None
+    reasoning_chars: int | None = None
     latency_ms: float | None = None
     ttft_ms: float | None = None
     # Cost is split by subsystem: on a judge-scored profile the judge is
@@ -196,6 +210,24 @@ class TraceRow:
     judge_cost_usd: float | None = None
     embed_cost_usd: float | None = None
     rerank_cost_usd: float | None = None
+
+    # ---- benchmark subsystem (CLAUDE.md §10.7) ----------------------------
+    # Added additively: nullable with defaults, so every trace written before
+    # the benchmark subsystem existed still reads (§3, "additive evolution
+    # only"). These are cross-family concepts, not per-benchmark columns.
+    # §10 forbids benchmark-specific branching outside `bench/adapters/`.
+    benchmark: str | None = None       # benchmark id, when this is a bench row
+    spec_hash: str | None = None       # refuses comparison across formats
+    sample_idx: int | None = None      # >0 for samples_per_item > 1 (pass@k)
+    # The I7 family: each counts items EXCLUDED from the accuracy denominator,
+    # so "could not parse" can never quietly become "got it wrong".
+    extraction_failed: bool | None = None
+    extraction_reason: str | None = None
+    extracted_via: str | None = None   # which chain link fired
+    format_violation: bool | None = None
+    refused: bool | None = None
+    constraint_satisfaction_rate: float | None = None
+    constraints_failed: str | None = None
 
     # ---- bookkeeping ------------------------------------------------------
     cache_hit: bool = False

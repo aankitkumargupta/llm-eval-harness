@@ -422,3 +422,209 @@ def test_unanswerable_items_are_scored_even_without_the_metric_listed():
     assert AbstentionScorer().applies(ctx)
     assert run_scorers(ctx, scorers=(AbstentionScorer(),)) \
         .values["abstention_correct"] == 1.0
+
+
+# =========================================================================== #
+#  Seam: a brand-new BENCHMARK ADAPTER, defined here, participating fully.
+# =========================================================================== #
+#
+# CLAUDE.md §9 Phase 7 requires exactly this: "tests/test_solid.py gains a
+# brand-new benchmark adapter defined inside the test file that participates
+# end to end". Open/Closed is a claim about what a future change costs, so the
+# only honest check is to make that change and confirm nothing else moved.
+#
+# Nothing below imports from harness/bench/adapters/. If adding a benchmark
+# required touching the runner, the store, the stats layer or the reporter,
+# this test could not be written — which is the point.
+
+
+class _RomanNumeralAdapter:
+    """A benchmark invented for this test: convert a Roman numeral to digits.
+
+    Four pure methods, no network, no clock, no global RNG, no provider call.
+    """
+
+    id = "roman_numerals"
+
+    VALUES = {"I": 1, "V": 5, "X": 10, "L": 50, "C": 100, "D": 500, "M": 1000}
+
+    def __init__(self, spec):
+        self.spec = spec
+
+    def load(self, *, seed=None, limit=None):
+        from harness.store.schema import EvalItem, ItemType
+        pairs = [("IV", "4"), ("IX", "9"), ("XL", "40"), ("XC", "90"),
+                 ("CD", "400"), ("MCMXCIV", "1994")]
+        items = [EvalItem(item_id=f"rn_{i}", query=f"Convert {r} to digits.",
+                          item_type=ItemType.ANSWERABLE, gold_answer=v)
+                 for i, (r, v) in enumerate(pairs)]
+        return items[:limit] if limit else items
+
+    def prompt(self, item, shots=()):
+        from harness.bench.contracts import Prompted
+        msgs = [{"role": "system", "content": "Reply with '#### <number>'."}]
+        for s in shots:
+            msgs.append({"role": "user", "content": s.query})
+            msgs.append({"role": "assistant", "content": f"#### {s.gold_answer}"})
+        msgs.append({"role": "user", "content": item.query})
+        return Prompted(messages=tuple(msgs))
+
+    def extract(self, raw):
+        from harness.bench.extract import run_chain
+        return run_chain(raw, [{"kind": "regex", "pattern": r"####\s*(-?\d+)"},
+                               {"kind": "numeric"}])
+
+    def score(self, item, extraction):
+        from harness.bench.contracts import ScoreSet
+        from harness.bench.extract import numeric_equal
+        s = ScoreSet()
+        if extraction.failed:
+            return s.set("accuracy", None).set("extraction_failed", True)
+        return (s.set("accuracy",
+                      1.0 if numeric_equal(extraction.value, item.gold_answer)
+                      else 0.0)
+                .set("extraction_failed", False)
+                .set("extracted_via", extraction.via))
+
+
+def _roman_spec():
+    from harness.bench.spec import BenchmarkSpec
+    return BenchmarkSpec.from_dict({
+        "id": "roman_numerals", "version": 1, "family": "math", "task": "direct",
+        "source": {"kind": "local", "ref": "<in-test>", "licence": "CC0",
+                   "split": "test"},
+        "sampling": {"seed": 1, "samples_per_item": 1},
+        "prompt": {"few_shot": {"n": 0, "selection": "fixed", "pool_split": "train"},
+                   "decoding": {"max_tokens": 64}},
+        "scoring": {"mode": "generative", "chance_level": 0.0,
+                    "extraction": {"chain": [{"kind": "numeric"}]}},
+    })
+
+
+def test_a_new_benchmark_adapter_satisfies_the_protocol_with_no_library_edits():
+    from harness.bench.contracts import BenchmarkAdapter
+
+    assert isinstance(_RomanNumeralAdapter(_roman_spec()), BenchmarkAdapter)
+
+
+def test_a_new_benchmark_adapter_passes_the_shared_contract_properties():
+    """The same properties the shipped adapters are held to, applied to one
+    the library has never seen."""
+    from harness.bench.contracts import Failed
+
+    a = _RomanNumeralAdapter(_roman_spec())
+    items = a.load()
+
+    assert len({i.item_id for i in items}) == len(items)
+    assert a.prompt(items[0], ()) == a.prompt(items[0], ())      # pure
+    assert a.extract("garbage").failed                            # total
+    assert a.score(items[0], Failed("x")).get("accuracy") is None  # I7
+    assert a.score(items[0], a.extract("#### 4")).get("accuracy") == 1.0
+
+
+def test_a_new_benchmark_adapter_runs_end_to_end_through_the_shared_runner():
+    """The load-bearing assertion. A benchmark defined entirely inside this
+    test file runs through the real runner, produces real TraceRows, and is
+    summarised by the real metrics module — with zero edits anywhere else."""
+    from harness.bench.metrics import summarise
+    from harness.bench.runner import run_benchmark
+    from harness.clients.fake_client import FakeClient
+
+    spec = _roman_spec()
+    rep = run_benchmark(adapter=_RomanNumeralAdapter(spec), spec=spec,
+                        models=["fake:a", "fake:b"],
+                        client=FakeClient(accuracy=1.0),
+                        run_id="seam_roman")
+
+    assert rep.errors == 0
+    assert len(rep.rows) == 12                      # 6 items x 2 models
+    assert {r.benchmark for r in rep.rows} == {"roman_numerals"}
+    assert all(r.spec_hash == spec.spec_hash() for r in rep.rows)
+
+    import pandas as pd
+    out = summarise(pd.DataFrame([r.to_dict() for r in rep.rows]),
+                    benchmark="roman_numerals")
+    assert set(out["model"]) == {"fake:a", "fake:b"}
+    assert out["n_items"].sum() == 12
+
+
+class _ScriptedClient:
+    """A two-line provider for the seam test.
+
+    `FakeClient` cannot answer Roman numerals — it has no idea what this
+    benchmark is, which is the correct behaviour for a generic fake and is why
+    a benchmark-specific stub belongs here rather than in the library.
+    """
+
+    def __init__(self, wrong_for: set[str] | None = None):
+        self.wrong_for = wrong_for or set()
+
+    def generate(self, model, messages, **kw):
+        from harness.bench.adapters.gsm8k import GSM8KAdapter  # noqa: F401
+        from harness.clients.base import GenResult
+
+        question = messages[-1]["content"]
+        roman = question.replace("Convert ", "").replace(" to digits.", "").strip()
+        value = _roman_to_int(roman)
+        if model in self.wrong_for and roman in ("XL", "XC"):
+            value += 1                       # a stable, partial disagreement
+        return GenResult(text=f"#### {value}", prompt_tokens=8,
+                         completion_tokens=4, latency_ms=1.0,
+                         finish_reason="stop", model=model)
+
+
+def _roman_to_int(s: str) -> int:
+    vals = _RomanNumeralAdapter.VALUES
+    total = 0
+    for i, ch in enumerate(s):
+        v = vals.get(ch, 0)
+        nxt = vals.get(s[i + 1], 0) if i + 1 < len(s) else 0
+        total += -v if v < nxt else v
+    return total
+
+
+def test_the_new_adapter_reaches_the_existing_significance_layer_unchanged():
+    """§10: 'No second significance implementation.' A benchmark the stats
+    layer has never heard of must flow through it untouched — same paired
+    test, same correction, same refusal to call a small gap real."""
+    import pandas as pd
+
+    from harness.bench.runner import run_benchmark
+    from harness.report.stats import significance_matrix
+
+    spec = _roman_spec()
+    rep = run_benchmark(adapter=_RomanNumeralAdapter(spec), spec=spec,
+                        models=["scripted:a", "scripted:b"],
+                        client=_ScriptedClient(wrong_for={"scripted:b"}),
+                        run_id="seam_roman_sig")
+    df = pd.DataFrame([r.to_dict() for r in rep.rows])
+
+    assert rep.errors == 0
+    assert df["accuracy"].notna().all(), "every item must be scoreable here"
+
+    sig = significance_matrix(df, metric="accuracy")
+    assert len(sig) == 1
+    assert sig.iloc[0]["n_pairs"] == 6
+    assert sig.iloc[0]["test"] == "mcnemar_exact"
+    # a is perfect, b misses two of six
+    assert sig.iloc[0]["diff"] == pytest.approx(2 / 6)
+    # ...and at n=6 the harness correctly declines to call that real (I6).
+    assert not sig.iloc[0]["significant"]
+
+
+def test_an_adapter_reporting_an_undeclared_metric_fails_loudly():
+    """A ScoreSet key with no TraceRow column would be computed and discarded,
+    and its absence from the report would read as 'the model scored zero'."""
+    import pytest as _pytest
+
+    from harness.bench.contracts import ScoreSet
+    from harness.bench.runner import run_benchmark
+
+    class _Bad(_RomanNumeralAdapter):
+        def score(self, item, extraction):
+            return ScoreSet().set("accuracy", 1.0).set("invented_metric", 0.5)
+
+    spec = _roman_spec()
+    with _pytest.raises(AttributeError, match="no TraceRow column"):
+        run_benchmark(adapter=_Bad(spec), spec=spec, models=["scripted:a"],
+                      client=_ScriptedClient(), run_id="seam_bad")

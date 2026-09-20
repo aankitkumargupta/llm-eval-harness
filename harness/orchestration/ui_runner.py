@@ -1,5 +1,5 @@
 """
-UI-facing run functions — what the app's background threads execute.
+UI-facing run functions, what the app's background threads execute.
 
 These reuse the same engine as the CLI (Ingestor, Orchestrator, TraceStore) and
 translate its progress into `Job` updates. They take no Streamlit dependency, so

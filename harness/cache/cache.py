@@ -4,7 +4,7 @@ Content-addressed cache for API responses.
 Why this exists: reporting and evaluators get re-run many times against the same
 model outputs. Hosted inference is billed per call and isn't bit-for-bit
 deterministic over time, so caching the raw response by a hash of its inputs
-buys BOTH cost savings AND reproducibility. The cache — not the seed — is the
+buys BOTH cost savings AND reproducibility. The cache, not the seed, is the
 real reproducibility guarantee.
 
 What is cached:
@@ -52,14 +52,14 @@ def stable_hash(*parts: Any) -> str:
 
 
 # --------------------------------------------------------------------------- #
-#  Key construction — shared by every implementation
+#  Key construction, shared by every implementation
 # --------------------------------------------------------------------------- #
 class CacheKeys:
     """How the harness names the things it caches.
 
     A mixin rather than free functions so an implementation gets the whole key
     vocabulary by inheriting one thing, and so the key scheme stays identical
-    across implementations — two caches that disagreed on keys would silently
+    across implementations, two caches that disagreed on keys would silently
     fail to share entries.
     """
 
@@ -171,7 +171,7 @@ class NullCache(CacheKeys):
     replaced. It is a peer implementation of the same protocol.
 
     The latency lane needs real network timings on *every* run, including
-    re-runs. A scratch directory is not a bypass — it is a cold cache that warms
+    re-runs. A scratch directory is not a bypass, it is a cold cache that warms
     up and then starts serving fabricated timings as if they were measured.
     """
 

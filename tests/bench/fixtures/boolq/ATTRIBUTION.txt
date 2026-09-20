@@ -1,0 +1,15 @@
+boolq_validation_20.jsonl
+
+Twenty rows from the BoolQ validation split (Clark et al., 2019, "BoolQ:
+Exploring the Surprising Difficulty of Natural Yes/No Questions", NAACL),
+taken verbatim from the Hub dataset google/boolq (config default) as served
+by the datasets-server: the first ten rows whose answer is false and the
+first ten whose answer is true, in their original order.
+
+Licence: CC-BY-SA-3.0 (https://creativecommons.org/licenses/by-sa/3.0/).
+Source: https://github.com/google-research-datasets/boolean-questions
+Row shape is exactly what harness/bench/fetch.py writes to the cache:
+{"answer": bool, "passage": str, "question": str}, one JSON object per line.
+
+This fixture exists so tests/bench/test_boolq.py runs offline. It is not the
+benchmark; the spec configs/benchmarks/boolq.yaml pins the fetched copy.

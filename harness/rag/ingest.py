@@ -90,7 +90,7 @@ class Ingestor:
         stays flat because we never accumulate more than `batch_size` chunks.
 
         progress_cb, if given, is called as progress_cb(chunks_done) after each
-        batch — used by the UI to drive a progress bar. It must not raise.
+        batch, used by the UI to drive a progress bar. It must not raise.
         """
         # We need the embedding dimension before creating the collection, so we
         # embed the very first batch, learn the dim, then create + upsert.

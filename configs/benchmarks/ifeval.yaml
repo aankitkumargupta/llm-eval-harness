@@ -1,0 +1,42 @@
+# IFEval, instruction following, checked programmatically. No judge, so no
+# judge cost and no judge bias: the cheapest high-signal family there is.
+id: ifeval
+version: 1
+family: instruction
+task: direct
+
+source:
+  kind: local
+  ref: tests/bench/fixtures/ifeval_synthetic.jsonl
+  split: test
+  checksum: ""
+  licence: Apache-2.0
+  commercial_use: true
+  citation: "Zhou et al., 2023 (IFEval)"
+
+sampling: {limit: null, seed: 1729, stratify_by: "", samples_per_item: 1}
+
+prompt:
+  template: ""
+  # Zero-shot deliberately: showing examples teaches imitation of the examples
+  # rather than obedience to the stated instruction, which is the thing under
+  # test.
+  few_shot: {n: 0, selection: fixed, pool_split: train}
+  system: null
+  decoding: {temperature: 0.0, max_tokens: 1024, top_p: 1.0}
+
+scoring:
+  mode: generative
+  extraction:
+    chain:
+      - {kind: verbatim}    # the whole response is the answer
+  metric: accuracy
+  chance_level: 0.0
+  aggregate: [mean]
+
+reporting:
+  primary_metric: accuracy
+  also: [constraint_satisfaction_rate, format_violation_rate, truncation_rate,
+         cost_usd, latency_p95_ms]
+
+contamination: {canary: false, ngram_overlap_against: null, perturbations: []}

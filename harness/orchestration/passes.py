@@ -10,8 +10,8 @@ and they differ in ways that matter:
   LatencyPass   serial, interleaved, cache genuinely bypassed, streaming on
 
 They used to be three methods on `Orchestrator`, each reaching into the same
-five pieces of shared mutable state. Adding a fourth kind of pass — a
-retrieval-free ablation, a multi-turn walk — meant editing that class, which is
+five pieces of shared mutable state. Adding a fourth kind of pass, a
+retrieval-free ablation, a multi-turn walk, meant editing that class, which is
 the Open/Closed problem in its usual form.
 
 Each is now a class implementing `EvaluationPass`. They share the collector and
@@ -19,7 +19,7 @@ the run context; nothing else. `Orchestrator` picks one and calls `run`.
 
 The two concurrency regimes are the reason the split is worth making explicit.
 Keeping the latency lane serial, uncached and interleaved is what stops the
-harness from benchmarking its own queue depth instead of the model — and that
+harness from benchmarking its own queue depth instead of the model, and that
 property is much easier to see, and to protect, when it is a separate class
 than when it is one branch among three in a long method.
 """
@@ -69,7 +69,7 @@ class ContextFactory(Protocol):
     """Builds a `RunContext` for a profile. Supplied by the orchestrator.
 
     A pass needs a context but has no business knowing how retrievers,
-    rerankers and judges are constructed — that is provider wiring.
+    rerankers and judges are constructed, that is provider wiring.
     """
 
     def __call__(self, profile: Profile, cache=None,
@@ -140,6 +140,8 @@ class BaselinePass(_PassBase):
         ctx = self.make_context(profile)
         retrieval_cfg = self._retrieval_cfg(profile)
         prompt_cfg = PromptConfig(max_context_chunks=profile.k)
+        if profile.system_prompt:
+            prompt_cfg.system_prompt = profile.system_prompt
         pcfg_hash = stable_hash(*profile.config_hash_parts())
 
         done_keys = done_keys or set()
@@ -197,7 +199,7 @@ class AdaptedPass(_PassBase):
         if not candidates:
             raise ValueError(f"Profile '{profile.name}' produced no candidates.")
 
-        # Every model faces the identical candidate list — the equal-budget
+        # Every model faces the identical candidate list, the equal-budget
         # guarantee, made explicit rather than assumed.
         self.collector.expect(
             (len(candidates) * len(dev_items) + len(test_items)) * len(models))
@@ -263,7 +265,7 @@ class AdaptedPass(_PassBase):
 class LatencyPass(_PassBase):
     """Clean latency: serial, interleaved, cache truly bypassed, streaming on.
 
-    `NullCache` rather than a scratch directory — a scratch directory warms up
+    `NullCache` rather than a scratch directory, a scratch directory warms up
     and then serves cached "network" timings on every subsequent run, which is
     worse than not measuring latency at all because it looks measured.
 
@@ -275,14 +277,20 @@ class LatencyPass(_PassBase):
 
     def run(self, profile: Profile, models: list[str], run_id: str,
             items: list[EvalItem] | None = None, warmup: int = 1,
-            repeats: int = 1, **_) -> RunReport:
+            repeats: int = 1, done_keys: set | None = None, **_) -> RunReport:
         started = time.time()
         items = items or []
+        # Resume: (item, model, "latency") already recorded is not timed
+        # again. Baseline honoured done_keys and this lane swallowed it, so a
+        # resume that retried 13 items re-ran the whole lane (DEBT R-33).
+        done_keys = done_keys or set()
         ctx = self.make_context(profile, cache=NullCache(), stream=True)
         retrieval_cfg = RetrievalConfig(
             mode=profile.retrieval_mode, k=profile.k,
             embedding_model=profile.embedding_model)
         prompt_cfg = PromptConfig(max_context_chunks=profile.k)
+        if profile.system_prompt:
+            prompt_cfg.system_prompt = profile.system_prompt
         pcfg_hash = stable_hash(*profile.config_hash_parts(), "latency")
 
         warm_done = dict.fromkeys(models, 0)
@@ -293,6 +301,9 @@ class LatencyPass(_PassBase):
             for _ in range(repeats):
                 for item in items:
                     for model in models:
+                        if (item.item_id, model, Pass.LATENCY.value) in done_keys:
+                            self.collector.skip()
+                            continue
                         row = run_item(item, model, profile.name, Pass.LATENCY,
                                        retrieval_cfg, prompt_cfg, ctx, run_id,
                                        active_metrics=["cost_usd"],

@@ -9,7 +9,7 @@ leaderboard number, and which metrics are active at all.
 Adding a profile is a config edit, never a code change. That contract is now
 enforced rather than assumed: `from_yaml` validates, reports *every* problem at
 once, and refuses to construct a profile whose weights reference metrics it
-never collects — a mistake that silently produced a leaderboard where a
+never collects, a mistake that silently produced a leaderboard where a
 carefully weighted metric contributed nothing.
 """
 
@@ -24,7 +24,7 @@ from ..store.schema import RetrievalMode, TaskType
 
 # Metrics that are lower-is-better. Their weights must be negative in a
 # composite, and a positive weight on one is almost always a typo that inverts
-# the leaderboard — a model gets rewarded for being expensive and slow.
+# the leaderboard, a model gets rewarded for being expensive and slow.
 LOWER_IS_BETTER = {"cost_usd", "latency_ms", "ttft_ms", "prompt_tokens",
                    "completion_tokens", "pii_leaked", "judge_disagreement"}
 
@@ -38,6 +38,7 @@ KNOWN_METRICS = {
     "citation_valid_pointer", "citation_supporting", "citation_density",
     "citation_recall",
     "abstention", "abstention_correct", "injection_resisted", "pii_leaked",
+    "native_script_ratio",
     "cost_usd", "latency_ms", "ttft_ms", "prompt_tokens", "completion_tokens",
 }
 
@@ -115,6 +116,16 @@ class Profile:
 
     abstention_judge: bool = False   # use the judge for abstention, not regex
     label_set: list[str] = field(default_factory=list)  # CLASSIFY profiles
+    # Script the answer is expected in, for translation and native-language
+    # tasks ("devanagari"; "" means not scored). Drives native_script_ratio.
+    target_script: str = ""
+    # The BASELINE pass's system prompt. Empty means the task default
+    # (RAG / direct / classify). Set it when the task needs an instruction the
+    # default does not carry ("translate this", "draft an application"): the
+    # tuning knobs' system_prompts are candidates for the ADAPTED pass only
+    # and never reach the baseline, so without this field a direct-task
+    # profile could not say what the task was.
+    system_prompt: str = ""
     chunk_size: int = 200
     overlap: int = 40
     description: str = ""
@@ -170,7 +181,7 @@ class Profile:
                 f"{sorted(KNOWN_METRICS)}")
 
         # A weight on a metric the profile never collects contributes nothing
-        # to the composite — the leaderboard silently ignores it, and the run
+        # to the composite, the leaderboard silently ignores it, and the run
         # looks like it measured something it didn't.
         collected = set(self.active_metrics) | {"abstention_correct"}
         if "abstention" in self.active_metrics:
@@ -180,7 +191,7 @@ class Profile:
         if orphan:
             problems.append(
                 f"metric_weights reference metrics not in active_metrics: "
-                f"{orphan}. They would contribute nothing to the composite — "
+                f"{orphan}. They would contribute nothing to the composite: "
                 f"add them to active_metrics or drop the weights.")
 
         unknown_w = [m for m in self.metric_weights if m not in KNOWN_METRICS]
@@ -199,6 +210,12 @@ class Profile:
                 problems.append("RAG profiles need an `embedding_model`.")
             if not self.corpus_path:
                 problems.append("RAG profiles need a `corpus_path`.")
+        if self.target_script:
+            from ..eval.languages import resolve_script
+            try:
+                resolve_script(self.target_script)
+            except ValueError as e:
+                problems.append(f"target_script: {e}")
         if self.task == TaskType.CLASSIFY and not self.label_set:
             problems.append("CLASSIFY profiles need a non-empty `label_set`.")
         if not self.evalset_path:
@@ -236,7 +253,10 @@ class Profile:
                 self.rerank_top_n, self.accuracy_scorer,
                 tuple(sorted(self.active_metrics)),
                 tuple(sorted(self.metric_weights.items())),
-                self.temperature, self.max_tokens, self.seed)
+                self.temperature, self.max_tokens, self.seed,
+                # Only when set, so profiles without one keep their hash and
+                # their earlier runs stay comparable.
+                *((self.system_prompt,) if self.system_prompt else ()))
 
     def to_dict(self) -> dict:
         from dataclasses import asdict

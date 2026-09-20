@@ -2,7 +2,7 @@
 Regression gating: turning an evaluation into a CI check.
 
 The harness could tell you which model is best *today*. It could not tell you
-whether the prompt change you just made broke anything — and that is the
+whether the prompt change you just made broke anything, and that is the
 question a team asks far more often than "which model should we buy".
 
 A gate compares a candidate run against a stored baseline and exits non-zero
@@ -99,6 +99,7 @@ def check_regression(
     require_significance: bool = True,
     alpha: float = 0.05,
     models: list[str] | None = None,
+    on_unpaired: str = "raise",
 ) -> GateResult:
     """Compare a candidate run against a baseline run, metric by metric, model by model.
 
@@ -152,11 +153,16 @@ def check_regression(
                     b.assign(model="__baseline__"),
                     c.assign(model="__candidate__"),
                 ])
+                # Raises when the two runs did not score the same items,
+                # which is exactly the condition this function's own docstring
+                # says must hold. A gate that silently compares different item
+                # sets can pass a regression that skipped the hard questions.
                 va, vb = paired_values(merged, "__candidate__", "__baseline__",
-                                       metric)
+                                       metric, on_unpaired=on_unpaired)
                 if len(va) >= 2:
                     cmp_ = compare_models(merged, "__candidate__",
-                                          "__baseline__", metric)
+                                          "__baseline__", metric,
+                                          on_unpaired=on_unpaired)
                     p_value = cmp_.p_value
                     significant = p_value < alpha
 

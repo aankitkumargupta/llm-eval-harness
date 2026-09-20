@@ -24,9 +24,23 @@ default_provider: together
 # at different prices, which is why pricing.yaml can key either one.
 models:
   # --- Together: cheap open-weight inference -------------------------------
-  - "openai/gpt-oss-20b"
+  # Probed 2026-09-19 with a one-token request each (`discovery.probe_model`).
+  # gpt-oss-20b and Qwen2.5-7B-Instruct-Turbo are listed by /v1/models but
+  # return "Unable to access non-serverless model" on this account (R-20), so
+  # they are kept for reference and not offered by default.
   - "openai/gpt-oss-120b"
-  - "Qwen/Qwen2.5-7B-Instruct-Turbo"
+  # - "openai/gpt-oss-20b"                 # non-serverless on this account
+  # - "Qwen/Qwen2.5-7B-Instruct-Turbo"     # non-serverless on this account
+
+  # --- Together: the five-model RAG comparison, all probed invokable --------
+  # Four families, four price tiers ($0.14 to $3.00 per 1M input). Llama is
+  # deliberately absent: it is the judge's family, and a judge must not grade
+  # its own relatives.
+  - "deepseek-ai/DeepSeek-V4-Flash-0731"
+  - "zai-org/GLM-5.3-Flash"
+  - "Qwen/Qwen3.5-9B"
+  - "zai-org/GLM-5.3"
+  - "moonshotai/Kimi-K3"
 
   # --- OpenRouter: everything else, same run -------------------------------
   # Uncomment to add frontier models to the comparison. They cost 10-100x the
@@ -63,7 +77,11 @@ rerank_model: ""
 # Both providers serve embeddings, so either works. Together is pinned here
 # because it also has the rerank endpoint, keeping the whole apparatus on one
 # provider while the models under test range across both.
-embedding_provider: together
+# Embeddings run locally (FastEmbed). Together lists one embedding model on
+# this account and serves none without a dedicated endpoint (R-20), so the
+# apparatus would otherwise be unservable. Rerank stays on Together but is
+# off in every shipped profile.
+embedding_provider: local
 rerank_provider: together
 judge_provider: together
 

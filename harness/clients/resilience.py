@@ -1,5 +1,5 @@
 """
-Retry, backoff and rate limiting — the layer that makes a long run survivable.
+Retry, backoff and rate limiting, the layer that makes a long run survivable.
 
 A real benchmark run is thousands of calls against a shared hosted API. Without
 this module a single 429 in hour three turns into an error row, and the run's
@@ -9,9 +9,9 @@ the worst possible failure mode for an evaluation harness: it doesn't crash, it
 
 Two mechanisms, deliberately separate:
 
-  RateLimiter  — proactive. A token bucket that paces requests so we mostly
+  RateLimiter, proactive. A token bucket that paces requests so we mostly
                  never hit the provider's limit in the first place.
-  retry_call   — reactive. Exponential backoff with full jitter for the errors
+  retry_call, reactive. Exponential backoff with full jitter for the errors
                  that get through anyway, honouring `Retry-After` when the
                  provider tells us how long to wait.
 
@@ -54,7 +54,7 @@ def _status_of(exc: BaseException) -> int | None:
 
     The `openai` SDK exposes `.status_code`, `requests` nests it under
     `.response.status_code`, and some wrappers only carry `.code`. We check all
-    three rather than depending on one SDK's exception hierarchy — this module
+    three rather than depending on one SDK's exception hierarchy, this module
     must stay provider-agnostic.
     """
     for attr in ("status_code", "code"):
@@ -117,7 +117,7 @@ class RetryPolicy:
     def backoff_for(self, attempt: int, rng: random.Random) -> float:
         """Delay before attempt `attempt` (1-based, so attempt 2 is the first retry).
 
-        Uses *full* jitter — a uniform draw over [0, capped_delay] rather than
+        Uses *full* jitter, a uniform draw over [0, capped_delay] rather than
         the capped delay itself. With many worker threads hitting the same 429
         at once, deterministic backoff makes them all retry in lockstep and
         re-trigger the limit; full jitter spreads them out.
@@ -157,7 +157,7 @@ def retry_call(
     for attempt in range(1, policy.max_attempts + 1):
         try:
             return fn()
-        except Exception as exc:  # noqa: BLE001 — classified immediately below
+        except Exception as exc:  # noqa: BLE001, classified immediately below
             if not is_retryable(exc):
                 raise  # permanent: a config bug, surface it now
             last = exc
@@ -183,7 +183,7 @@ class RateLimiter:
     `rate` tokens accrue per second up to `burst`. Each request takes one token;
     when the bucket is empty, `acquire()` blocks until one refills. This keeps
     the *average* request rate under the provider's limit while still allowing a
-    short burst — which is exactly the shape of a hosted API quota.
+    short burst, which is exactly the shape of a hosted API quota.
 
     rate <= 0 disables limiting entirely (the default: most users are well under
     their quota and shouldn't pay a latency tax for pacing they don't need).
