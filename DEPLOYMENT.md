@@ -6,8 +6,8 @@ vector store's single-writer rule, and how to stop a mis-typed config from
 spending money all night.
 
 **Read [Security](#security) before putting this on any machine other people can
-reach.** The app accepts an API key and spends money; it ships with no
-authentication of its own, by design.
+reach.** The app accepts an API key and spends money; its sign-in is a shared
+pilot password (set `HARNESS_PILOT_PASSWORD`), not real authentication, by design.
 
 ---
 
@@ -255,6 +255,24 @@ volumes:
 Then set `qdrant_url: "http://qdrant:6333"` in `configs/run.yaml`.
 
 ---
+
+### The web UI in a container
+
+The Dockerfile at the repo root serves the browser UI (`python main.py serve`: landing
+page, sign-in, product pages and every screen) on port 8010. Keys and the pilot password are
+passed at run time, never baked in; `.dockerignore` keeps `.env`, `workspace/` and `runs/` out
+of the image.
+
+```bash
+docker build -t llm-eval-harness .
+
+docker run -d --name eval-web   -p 127.0.0.1:8010:8010   -e TOGETHER_API_KEY="$TOGETHER_API_KEY"   -e HARNESS_PILOT_PASSWORD="$HARNESS_PILOT_PASSWORD"   -v "$PWD/workspace:/app/workspace"   -v "$PWD/runs:/app/runs"   llm-eval-harness
+```
+
+Then put a reverse proxy with TLS in front of `127.0.0.1:8010` (Caddy, nginx, or the cloud
+host's ingress). The sign-in gate is a shared pilot password with server-side roles, not
+accounts: set `HARNESS_PILOT_PASSWORD` to something private before the port is reachable
+by anyone else, and add `--budget <usd>` to the `CMD` if runs may be started from the UI.
 
 ## Mode D: CI regression gate
 

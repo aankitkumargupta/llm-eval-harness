@@ -1,7 +1,6 @@
 """
-Sign-in gate for the browser UI, in the shape of the Maha Evaluation
-Intelligence pilot: a landing page, a shared pilot password, a name and
-function for attribution, and a role that is enforced server-side.
+Sign-in gate for the browser UI: a landing page, a shared pilot password, a
+name and function for attribution, and a role that is enforced server-side.
 
 What it is: a single gate in front of a loopback-only tool that can spend a
 provider key. The password comes from the environment
@@ -31,7 +30,7 @@ from collections.abc import Callable
 from .api import ApiError
 
 PASSWORD_ENV = "HARNESS_PILOT_PASSWORD"
-DEFAULT_PASSWORD = "Maha@2027"          # the pilot's shared password, as in Maha Evaluation Intelligence
+DEFAULT_PASSWORD = "Maha@2027"          # built-in pilot default; the console says so when it is in use
 SESSION_COOKIE = "harness_session"
 SESSION_TTL_S = 12 * 3600
 PBKDF2_ROUNDS = 200_000

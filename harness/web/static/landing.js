@@ -1,5 +1,4 @@
-/* Landing and sign-in for the Evaluation Harness, in the shape of the Maha
-   Evaluation Intelligence pilot. Vanilla JS on purpose: the app is served by
+/* Landing and sign-in for the Evaluation Harness. Vanilla JS on purpose: the app is served by
    a stdlib server and ships no framework. Nothing here computes a metric;
    the numbers on this page are the product's own counts. */
 
@@ -11,7 +10,7 @@ const LANG_LABELS = { en: "EN", hi: "हि", mr: "म" };
 
 const STR = {
   brand: { en: "Evaluation Harness", hi: "इवैल्युएशन हार्नेस", mr: "इव्हॅल्युएशन हार्नेस" },
-  brandSub: { en: "Maha Evaluation Intelligence · LLM evaluation", hi: "महा इवैल्युएशन इंटेलिजेंस · एलएलएम मूल्यांकन", mr: "महा इव्हॅल्युएशन इंटेलिजन्स · एलएलएम मूल्यांकन" },
+  brandSub: { en: "Institutional LLM evaluation", hi: "संस्थागत एलएलएम मूल्यांकन", mr: "संस्थात्मक एलएलएम मूल्यांकन" },
   navReal: { en: "What's real", hi: "क्या वास्तविक है", mr: "काय खरे आहे" },
   navScreens: { en: "Screens", hi: "स्क्रीन", mr: "स्क्रीन" },
   navFoundations: { en: "Foundations", hi: "आधार", mr: "पाया" },
@@ -64,7 +63,7 @@ const STR = {
   cons3d: { en: "Not the highest score: the cheapest model that clears your bar at your daily volume, with the cost of every extra point.", hi: "सबसे ऊँचा स्कोर नहीं: आपकी दैनिक मात्रा पर आपकी सीमा पार करने वाला सबसे सस्ता मॉडल, हर अतिरिक्त अंक की कीमत सहित।", mr: "सर्वाधिक स्कोअर नाही: तुमच्या दैनंदिन प्रमाणात तुमची मर्यादा पार करणारे सर्वात स्वस्त मॉडेल, प्रत्येक अतिरिक्त गुणाच्या किमतीसह." },
   readyTitle: { en: "Ready to find out which model actually clears your bar?", hi: "जानने को तैयार हैं कि कौन सा मॉडल वास्तव में आपकी सीमा पार करता है?", mr: "कोणते मॉडेल खरोखर तुमची मर्यादा पार करते हे जाणून घेण्यास तयार आहात?" },
   readyBody: { en: "Seventeen screens, one trace store, one significance implementation: evaluation, benchmarks, probes and decisions, built for institutions that have to answer for the models they deploy.", hi: "सत्रह स्क्रीन, एक ट्रेस स्टोर, एक महत्व कार्यान्वयन: मूल्यांकन, बेंचमार्क, प्रोब और निर्णय, उन संस्थाओं के लिए जिन्हें अपने मॉडलों का जवाब देना है।", mr: "सतरा स्क्रीन, एक ट्रेस स्टोअर, एक लक्षणीयता अंमलबजावणी: मूल्यांकन, बेंचमार्क, प्रोब आणि निर्णय, ज्यांना त्यांच्या मॉडेलचे उत्तर द्यावे लागते अशा संस्थांसाठी." },
-  footerTag: { en: "Evaluation Harness · Maha Evaluation Intelligence", hi: "इवैल्युएशन हार्नेस · महा इवैल्युएशन इंटेलिजेंस", mr: "इव्हॅल्युएशन हार्नेस · महा इव्हॅल्युएशन इंटेलिजन्स" },
+  footerTag: { en: "Evaluation Harness · Institutional LLM evaluation", hi: "इवैल्युएशन हार्नेस · संस्थागत एलएलएम मूल्यांकन", mr: "इव्हॅल्युएशन हार्नेस · संस्थात्मक एलएलएम मूल्यांकन" },
   footerNote: { en: "A working pilot, honest about what is measured and what is not; see", hi: "एक कार्यशील पायलट, जो मापा गया और जो नहीं, उसके बारे में ईमानदार; देखें", mr: "एक कार्यरत पायलट, काय मोजले आणि काय नाही याबद्दल प्रामाणिक; पहा" },
   footerLink: { en: "what's actually real", hi: "क्या वास्तव में वास्तविक है", mr: "प्रत्यक्षात काय खरे आहे" },
   back: { en: "‹ Back", hi: "‹ वापस", mr: "‹ मागे" },

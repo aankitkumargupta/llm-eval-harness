@@ -345,9 +345,8 @@ You can also override per command without touching config, using `--qdrant-path 
 
 ### 6. Run the browser UI
 
-**Sign-in.** The UI opens on a landing page and the product sits behind a sign-in, in the
-same shape as the Maha Evaluation Intelligence pilot: your name and institutional function
-(attribution only), a role, and the shared pilot password. The password comes from
+**Sign-in.** The UI opens on a landing page and the product sits behind a sign-in: your name
+and institutional function (attribution only), a role, and the shared pilot password. The password comes from
 `HARNESS_PILOT_PASSWORD` in `.env` (see `.env.example`); when unset, the pilot default is
 used and the console says so at start. It is hashed with PBKDF2 before comparison, sessions
 are HttpOnly cookies that expire after twelve hours, and the role is enforced by the server:

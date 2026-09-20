@@ -3007,7 +3007,6 @@ function viewCapabilities() {
   w.append(card("Platform", "Around the measurement.", storyList([
     ["Sign-in gate with server-side roles", "Built", "A landing page, a shared pilot password hashed before comparison, HttpOnly sessions, and an Assurance Lead role required to start a paid run. Pilot-grade: no accounts, SSO or MFA."],
     ["Saved reports and HTML export", "Built", "A report freezes runs with their caveats; a price fixed tomorrow does not change what a report said today."],
-    ["Integration with Maha Evaluation Intelligence", "Built", "The harness is vendored unchanged into the Maha platform, which reads its API through a same-origin proxy and deep-links into every screen."],
   ])));
   return w;
 }
@@ -3106,11 +3105,10 @@ function viewDeployment() {
     ["Embedded index", "Built", "Retrieval uses an embedded vector store under workspace/; one process at a time holds it, which the runner serialises."],
     ["Offline by default", "Built", "The whole test suite runs with no key and blocked sockets; live runs are opt-in and budget-capped."],
   ])));
-  w.append(card("Integrate it", "The Maha Evaluation Intelligence platform carries the harness unchanged.", storyList([
-    ["Vendored copy", "Built", "The product is copied into the Maha repository as evaluation-harness/ and started by its dev launcher when its environment exists."],
-    ["Same-origin API path", "Built", "The Maha SPA reads runs, case studies, reports and the Evaluate format through /harness-api, a proxy to this server's /api; it computes no metric of its own."],
-    ["Deep links", "Built", "Every harness screen has a hash the other platform links to; the sign-in preserves it, so a link lands on the intended screen."],
-    ["Static hosting", "Partial", "The Maha frontend deploys as static files; the harness is a Python server that must be hosted beside it, with a rewrite for /harness-api and real authentication in front."],
+  w.append(card("Embed it in another platform", "The harness stays one process; another site reads it through its API.", storyList([
+    ["API for another frontend", "Built", "A frontend reads runs, case studies, reports and the Evaluate format through a proxy to this server's /api and computes no metric of its own."],
+    ["Deep links", "Built", "Every screen has a hash another site can link to; the sign-in preserves it, so a link lands on the intended screen."],
+    ["Static hosting beside it", "Partial", "A static frontend can sit in front, but the harness is a Python server that must be hosted alongside it, with real authentication in front once it is exposed."],
   ])));
   w.append(card("Hand it to a new team", "Ten minutes from clone to first result on their own data.",
     el("div", { class: "row" },
