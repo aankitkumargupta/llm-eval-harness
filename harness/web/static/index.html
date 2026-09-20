@@ -30,6 +30,8 @@
                 aria-label="Sign out">⎋</button>
       </div>
 
+      <button id="sidebtn" class="iconbtn sidebtn" aria-expanded="false"
+              aria-label="Product pages" title="Product pages">☷</button>
       <button id="menubtn" class="iconbtn menubtn" aria-expanded="false"
               aria-label="Menu">☰</button>
     </div>
@@ -37,7 +39,14 @@
     <div class="subbar" id="subbar" aria-label="Screens"></div>
   </header>
 
-  <main id="main"><div class="empty"><span class="spin"></span>Loading…</div></main>
+  <!-- The product pages live in a left sidebar: what the harness is, its
+       capabilities, architecture, trust, roadmap and deployment, for a reader
+       who wants the product before the numbers. The screens themselves are
+       unchanged and still reached from the task bar above. -->
+  <div class="app-body">
+    <aside id="sidebar" class="sidebar" aria-label="Product and workspace"></aside>
+    <main id="main"><div class="empty"><span class="spin"></span>Loading…</div></main>
+  </div>
 </div>
 <script type="module" src="/app.js"></script>
 </body>

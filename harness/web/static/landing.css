@@ -5,8 +5,14 @@
    themes hold. */
 
 .landing-body { display: block; }
+/* The sign-in split is display:grid, which would beat the UA's [hidden]
+   rule and show both views at once; this keeps hidden meaning hidden. */
+.landing [hidden] { display: none !important; }
 .landing { max-width: 1180px; margin: 0 auto; padding: 0 var(--sp-5) var(--sp-6); }
-.landing .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); }
+.landing .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); max-width: 100%; min-width: 0; }
+/* The brand's text is a flex item; without min-width:0 it keeps its
+   max-content width and pushes the page wider than a phone screen. */
+.landing .brand > div, .landing .brand > span:not(.mark) { min-width: 0; overflow-wrap: anywhere; }
 .landing .brand .mark { width: 34px; height: 34px; border-radius: 9px; background: var(--elevated); border: 1px solid var(--hair-2); position: relative; flex-shrink: 0; }
 .landing .brand .mark::after { content: ""; position: absolute; inset: 11px; background: var(--gold); transform: rotate(45deg); border-radius: 1px; }
 .landing .brand .mark.small { width: 26px; height: 26px; }

@@ -355,6 +355,15 @@ an Evaluator can read everything, and only an Assurance Lead can start a run tha
 provider key. This is a gate for a loopback-only tool, not user accounts, SSO or MFA; do not
 expose the server beyond loopback on its strength.
 
+**Product pages for stakeholders.** Once signed in, a sidebar on the left (`python main.py serve`)
+groups the site into Product, Evaluations and Workspace. The Product pages (Capabilities,
+Architecture, Trust and security, Roadmap, Deployment) are prose for a reader who wants to know
+what the platform does before looking at numbers: each capability carries a Built / Partial /
+Roadmap tag that mirrors the debt register, so nothing is described as working that is not. The
+Evaluations group opens the Case studies, Evaluate and Saved reports screens; the Workspace group
+lists every task-bar screen. The task bar and every existing screen are unchanged; the sidebar is
+a second way in, collapsible per group, and a toggle on narrow windows.
+
 
 ```bash
 streamlit run app.py
