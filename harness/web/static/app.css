@@ -763,6 +763,9 @@ figure svg { max-width: 900px; height: auto; }
 .evpick[aria-pressed="true"] b { color: var(--gold-ink); }
 .evcode pre.out { margin: 0; max-height: 420px; overflow: auto; white-space: pre; }
 .evform label { display: block; }
+/* The fields stack in one column here (elsewhere .f sits in a .row); without
+   this the next caption is drawn against the previous field's bottom edge. */
+.evform .f + .f, .evform .f + .note, .evform .note + .f { margin-top: var(--sp-4); }
 .chk { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-2); cursor: pointer; }
 .chk input { width: 16px; height: 16px; }
 @media (max-width: 820px) { .evform.grid2 { grid-template-columns: 1fr; } }
