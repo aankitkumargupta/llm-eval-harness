@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Evaluation Intelligence</title>
+<link rel="stylesheet" href="/app.css">
+<link rel="stylesheet" href="/landing.css">
+</head>
+<body class="landing-body">
+<div class="landing" id="landing">
+
+  <!-- ===================== hero ===================== -->
+  <section id="hero-view">
+    <nav class="landing-nav">
+      <a class="brand" href="/">
+        <span class="mark"></span>
+        <div><b data-i18n="brand">Evaluation Intelligence</b><span data-i18n="brandSub">Institutional LLM evaluation</span></div>
+      </a>
+      <div class="landing-nav-links">
+        <a href="#real" data-i18n="navReal">What's real</a>
+        <a href="#screens" data-i18n="navScreens">Screens</a>
+        <a href="#foundations" data-i18n="navFoundations">Foundations</a>
+        <a href="#consoles" data-i18n="navConsoles">Consoles</a>
+      </div>
+      <div class="landing-nav-tools">
+        <div class="lang-switch" id="langswitch"></div>
+        <button class="iconbtn" id="themebtn" title="Switch theme" aria-label="Switch theme">◐</button>
+        <button class="btn sm" id="signin-top" data-i18n="signIn">Sign in</button>
+      </div>
+    </nav>
+
+    <div class="landing-hero">
+      <div class="eyebrow" data-i18n="eyebrow">INSTITUTIONAL LLM EVALUATION</div>
+      <h1 class="landing-h1" data-i18n="brand">Evaluation Intelligence</h1>
+      <h2 class="landing-h2"><span data-i18n="h2Prefix">Prove which model clears your bar,</span> <span class="accent" data-i18n="h2Accent">with the margin of error on the record.</span></h2>
+      <p class="landing-sub" data-i18n="subCopy">A model × profile × pass matrix over your own data: every item scored, every rupee of spend metered from the provider's own counts, every failure mode measured on its own, and a paired, corrected test that decides whether the order means anything. Sovereign infrastructure that runs on your machine; the traces stay in your control.</p>
+      <div class="landing-hero-ctas">
+        <button class="btn lg" id="signin-hero" data-i18n="enterCta">Enter the Evaluation Intelligence</button>
+      </div>
+      <a href="#real" class="landing-link" data-i18n="seeReal">See what's actually real</a>
+      <div class="stat-band">
+        <div class="stat-band-item"><div class="stat-band-value">4</div><div class="stat-band-label" data-i18n="statFailure">failure modes it is built against</div></div>
+        <div class="stat-band-item"><div class="stat-band-value">12</div><div class="stat-band-label" data-i18n="statInvariants">invariants enforced</div></div>
+        <div class="stat-band-item"><div class="stat-band-value">5</div><div class="stat-band-label" data-i18n="statCases">worked case studies</div></div>
+        <div class="stat-band-item"><div class="stat-band-value">8</div><div class="stat-band-label" data-i18n="statLanguages">languages recognised</div></div>
+      </div>
+      <div class="landing-flow" id="flow"></div>
+    </div>
+
+    <div class="landing-quote-band">
+      <p class="landing-quote"><span data-i18n="quote1">"Non-significant means non-significant. When the interval straddles zero the harness refuses to name a winner and says</span> <span class="accent" data-i18n="quote2">how many more items it would take."</span></p>
+      <div class="landing-quote-tag" data-i18n="quoteTag">THE HONESTY RULE (INVARIANT I6)</div>
+    </div>
+
+    <div class="landing-wide">
+      <section class="kit-section" id="real">
+        <div class="eyebrow" data-i18n="realEyebrow">WHAT'S ACTUALLY REAL TODAY</div>
+        <h2 class="kit-section-title" data-i18n="realTitle">Not a mockup: three things genuinely run</h2>
+        <div class="card-grid" style="--cols:3">
+          <div class="card feature"><div class="card-icon">Σ</div><h4 data-i18n="real1t">A paired, corrected test</h4><p data-i18n="real1d">Exact McNemar for binary metrics, paired bootstrap for continuous ones, Holm-Bonferroni across the family. Every ranking shows its interval, and a gap inside it is reported as not separable, with the items needed to settle it.</p></div>
+          <div class="card feature"><div class="card-icon">₹</div><h4 data-i18n="real2t">Spend metered, not estimated</h4><p data-i18n="real2d">Generation, judge, embedding and rerank are billed from the provider's own usage counts into four buckets that sum to the total. An unpriced model fails validation instead of ranking as free.</p></div>
+          <div class="card feature"><div class="card-icon">≠</div><h4 data-i18n="real3t">Failure kept apart from wrongness</h4><p data-i18n="real3d">Truncation, refusal, extraction failure and injection are reported as their own rates, never folded into accuracy. Hidden reasoning tokens are recorded per row so an empty answer reads as a budget finding.</p></div>
+        </div>
+      </section>
+
+      <section class="kit-section kit-section-light" id="screens">
+        <div class="eyebrow" data-i18n="screensEyebrow">THE SCREENS</div>
+        <h2 class="kit-section-title" data-i18n="screensTitle">Every screen, and what it is for</h2>
+        <p class="kit-section-desc" data-i18n="screensDesc">The same task bar you get once you are signed in. Nothing here is marketed as done when it is not: every screen listed exists and is covered by the offline test suite.</p>
+        <div class="landing-module-grid" id="modules"></div>
+      </section>
+
+      <section class="kit-section" id="foundations">
+        <div class="eyebrow" data-i18n="foundEyebrow">THE FOUNDATIONS</div>
+        <h2 class="kit-section-title" data-i18n="foundTitle">Why an institution can trust it, with the specifics</h2>
+        <div class="card checklist">
+          <div class="check-row"><span class="check-mark">✓</span><div><b data-i18n="found1l">PBKDF2-HMAC-SHA256, 200,000 iterations</b><span data-i18n="found1d">the pilot password is hashed before it is ever compared; the plain value is never held for comparison</span></div></div>
+          <div class="check-row"><span class="check-mark">✓</span><div><b data-i18n="found2l">HttpOnly session cookies, 12-hour expiry</b><span data-i18n="found2d">client-side JavaScript cannot read the token; a laptop left open does not stay signed in</span></div></div>
+          <div class="check-row"><span class="check-mark">✓</span><div><b data-i18n="found3l">Server-side role checks, not UI hiding</b><span data-i18n="found3d">an Evaluator's attempt to start a paid run is rejected with HTTP 403 by the server itself</span></div></div>
+          <div class="check-row"><span class="check-mark">✓</span><div><b data-i18n="found4l">Append-only traces, secrets never in artefacts</b><span data-i18n="found4d">every scored item is written once with its manifest; keys are redacted from logs, traces, cache keys and exports</span></div></div>
+        </div>
+      </section>
+
+      <section class="kit-section kit-section-light" id="consoles">
+        <div class="eyebrow" data-i18n="consEyebrow">THREE CONSOLES, THREE QUESTIONS</div>
+        <h2 class="kit-section-title" data-i18n="consTitle">Same platform, different work</h2>
+        <div class="card-grid" style="--cols:3">
+          <div class="card feature"><div class="card-icon">✎</div><h4 data-i18n="cons1t">Evaluate</h4><p data-i18n="cons1d">Pick the task, see the data format with sample rows, have the profile written and validated, upload a file checked line by line, then run.</p></div>
+          <div class="card feature"><div class="card-icon">☷</div><h4 data-i18n="cons2t">Case studies</h4><p data-i18n="cons2d">Five Indian-government use cases in English, Hindi and Hinglish, each with a write-up and the newest live run.</p></div>
+          <div class="card feature"><div class="card-icon">◆</div><h4 data-i18n="cons3t">Decide</h4><p data-i18n="cons3d">Not the highest score: the cheapest model that clears your bar at your daily volume, with the cost of every extra point.</p></div>
+        </div>
+      </section>
+
+      <div class="card landing-cta-card">
+        <h3 data-i18n="readyTitle">Ready to find out which model actually clears your bar?</h3>
+        <p data-i18n="readyBody">Seventeen screens, one trace store, one significance implementation: evaluation, benchmarks, probes and decisions, built for institutions that have to answer for the models they deploy.</p>
+        <div class="landing-cta-row">
+          <button class="btn" id="signin-cta" data-i18n="enterCta">Enter the Evaluation Intelligence</button>
+          <a href="#real" class="btn ghost" data-i18n="seeReal">See what's actually real</a>
+        </div>
+      </div>
+
+      <footer class="landing-footer">
+        <div class="brand"><span class="mark small"></span><span data-i18n="footerTag">Evaluation Intelligence · Institutional LLM evaluation</span></div>
+        <div class="landing-footer-note"><span data-i18n="footerNote">A working pilot, honest about what is measured and what is not; see</span> <a href="#real" data-i18n="footerLink">what's actually real</a>.</div>
+      </footer>
+    </div>
+  </section>
+
+  <!-- ===================== sign-in ===================== -->
+  <section id="login-view" class="login-split" hidden>
+    <div class="login-tools">
+      <div class="lang-switch" id="langswitch2"></div>
+      <button class="iconbtn" id="themebtn2" title="Switch theme" aria-label="Switch theme">◐</button>
+    </div>
+    <div class="login-left">
+      <button class="btn ghost sm" id="back" data-i18n="back">‹ Back</button>
+      <div class="brand"><span class="mark"></span><div><b data-i18n="brand">Evaluation Intelligence</b><span data-i18n="brandSub">Institutional LLM evaluation</span></div></div>
+      <div class="pill principle" data-i18n="principle">Platform principle: cost is negatively weighted, and a non-significant gap is never a winner</div>
+      <h2 class="login-left-title"><span data-i18n="heroTitle1">Numbers that</span> <span class="accent" data-i18n="heroTitleAccent">hold up to scrutiny.</span></h2>
+      <p class="login-left-body" data-i18n="heroBody">A single gated entry point for this pilot. Every model sees the same items in the same order, every paid call is metered, and nothing counts as a winner until the paired test says the gap is real.</p>
+      <ul class="login-checklist">
+        <li data-i18n="check1">Role-based access for Assurance Leads and Evaluators, enforced server-side</li>
+        <li data-i18n="check2">Every run records its manifest: git SHA, dataset and apparatus hashes, pricing version</li>
+        <li data-i18n="check3">Traces are append-only; re-scoring writes a derived table, never a mutation</li>
+      </ul>
+      <div class="login-stat-row">
+        <div><div class="stat-band-value">12</div><div class="login-stat-label" data-i18n="statInvariantsU">INVARIANTS ENFORCED</div></div>
+        <div><div class="stat-band-value">100%</div><div class="login-stat-label" data-i18n="statMetered">SPEND METERED</div></div>
+        <div><div class="stat-band-value">5</div><div class="login-stat-label" data-i18n="statCasesU">CASE STUDIES</div></div>
+      </div>
+      <div class="login-badges">
+        <span class="pill" data-i18n="badge1">Paired Tests</span>
+        <span class="pill" data-i18n="badge2">Metered Spend</span>
+        <span class="pill" data-i18n="badge3">Append-Only Traces</span>
+      </div>
+    </div>
+
+    <div class="login-right">
+      <h2 data-i18n="secureSignIn">Secure Sign-In</h2>
+      <p class="login-intro" data-i18n="formIntro">Every field below feeds the attribution on the run manifests, not a production credential store.</p>
+      <form id="loginform" class="login-form" autocomplete="on">
+        <div class="login-form-row">
+          <label><span class="login-label" data-i18n="yourName">YOUR NAME</span><input name="name" id="f-name" required autocomplete="name"></label>
+          <label><span class="login-label" data-i18n="function">INSTITUTIONAL FUNCTION</span><select name="department" id="f-dept"></select></label>
+        </div>
+        <div class="login-label" data-i18n="selectRole">SELECT A PILOT ROLE TO CONTINUE</div>
+        <div class="role-pick">
+          <button type="button" class="role-card" data-role="Assurance Lead"><span class="role-icon">◈</span><div><b data-i18n="roleLead">Assurance Lead</b><span data-i18n="roleLeadDesc">Can start runs that spend the provider key; the only role gated server-side today</span></div></button>
+          <button type="button" class="role-card" data-role="Evaluator"><span class="role-icon">◎</span><div><b data-i18n="roleEval">Evaluator</b><span data-i18n="roleEvalDesc">Reads reports, case studies and past attempts; starting a paid run needs an Assurance Lead</span></div></button>
+        </div>
+        <label class="login-pw"><span class="login-label" data-i18n="password">PASSWORD</span>
+          <div class="pw-field"><input type="password" name="password" id="f-pw" required autocomplete="current-password" data-i18n-placeholder="pwPlaceholder" placeholder="Shared pilot password"><button type="button" id="pw-toggle" aria-label="Toggle password visibility">👁</button></div>
+        </label>
+        <label class="remember-row"><input type="checkbox" id="f-remember" checked> <span data-i18n="remember">Remember my function and role on this device</span></label>
+        <div class="login-error" id="login-error" hidden></div>
+        <button class="btn login-submit" type="submit" id="submit" data-i18n="enterWorkspace">Enter the workspace</button>
+        <div class="login-note"><span class="note-mark">!</span><div><strong data-i18n="noteStrong">Shared pilot password, not a personal account.</strong> <span data-i18n="noteRest">Name and function are unverified attribution only. Role is enforced server-side. Production would use individual accounts, SSO and MFA.</span></div></div>
+        <p class="login-footnote" data-i18n="attribution">This session, and every run it starts, is attributed to the name above and written to the run manifests.</p>
+      </form>
+    </div>
+  </section>
+</div>
+<script type="module" src="/landing.js"></script>
+</body>
+</html>
