@@ -366,8 +366,25 @@ function errMsg(text) {
 async function api(path, opts) {
   const r = await fetch(path, opts);
   const body = await r.json().catch(() => ({ error: "HTTP " + r.status }));
+  // A session that has expired: the server now serves the landing page at
+  // "/", so a reload takes the reader to sign-in with their hash intact.
+  if (r.status === 401 && !path.startsWith("/api/auth/")) { location.reload(); }
   if (!r.ok) throw new Error(body.error || ("HTTP " + r.status));
   return body;
+}
+
+/* Who is signed in (from the HttpOnly session the server holds), shown in the
+   task bar; sign-out clears it server-side and returns to the landing. */
+async function initUser() {
+  try {
+    const me = await api("/api/auth/me");
+    const u = me.user;
+    $("#userchip").textContent = u ? `${u.name} · ${u.role}` : "";
+  } catch { /* shown empty; the next API call redirects if the session is gone */ }
+  $("#logoutbtn").addEventListener("click", async () => {
+    try { await post("/api/auth/logout", {}); } catch { /* clearing anyway */ }
+    location.href = "/";
+  });
 }
 const post = (path, data) => api(path, {
   method: "POST", headers: { "Content-Type": "application/json" },
@@ -3269,6 +3286,7 @@ function initTheme() {
 
 async function boot() {
   initTheme();
+  initUser();
   buildNav();
   document.querySelector(".brand").addEventListener("click", e => {
     e.preventDefault();
