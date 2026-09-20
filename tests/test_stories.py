@@ -59,6 +59,27 @@ def test_product_pages_compute_nothing_and_stay_honest():
     assert "—" not in pages
 
 
+def test_sidebar_collapses_to_a_rail_and_remembers_it():
+    js = _js()
+    side = _block(js, "function buildSidebar()", "function renderSidebar()")
+    assert "harness-sidebar-collapsed" in side and 'classList.toggle("collapsed"' in side
+    assert 'class: "sidebar-collapse"' in side
+    css = (STATIC / "app.css").read_text(encoding="utf-8")
+    assert ".sidebar.collapsed" in css and "@media (min-width: 1001px)" in css
+
+
+def test_sign_out_asks_before_clearing_the_session():
+    js = _js()
+    user = _block(js, "async function initUser()", "const post = ")
+    # The only path to the logout endpoint is the dialog's "confirm" value
+    # (or the plain confirm() fallback); the button itself never signs out.
+    assert user.count('post("/api/auth/logout"') == 1
+    assert 'returnValue === "confirm"' in user and "showModal" in user
+    assert "window.confirm(" in user
+    html = (STATIC / "index.html").read_text(encoding="utf-8")
+    assert '<dialog id="logoutdlg"' in html and 'value="confirm"' in html and 'value="cancel"' in html
+
+
 def test_landing_keeps_hidden_views_hidden():
     css = (STATIC / "landing.css").read_text(encoding="utf-8")
     assert ".landing [hidden] { display: none !important; }" in css

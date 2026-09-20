@@ -47,6 +47,20 @@
     <aside id="sidebar" class="sidebar" aria-label="Product and workspace"></aside>
     <main id="main"><div class="empty"><span class="spin"></span>Loading…</div></main>
   </div>
+
+  <!-- Sign-out confirmation. The session is held by the server, so leaving
+       is a deliberate act rather than a stray click on the task bar. -->
+  <dialog id="logoutdlg" class="dlg" aria-labelledby="logoutdlg-title">
+    <form method="dialog">
+      <h3 id="logoutdlg-title">Sign out?</h3>
+      <p class="note">This ends your session on this device. Nothing that has been run or
+        saved is affected; sign in again to continue where you left off.</p>
+      <div class="dlg-actions">
+        <button class="btn ghost sm" value="cancel" type="submit">Stay signed in</button>
+        <button class="btn sm" value="confirm" type="submit" id="logoutconfirm">Sign out</button>
+      </div>
+    </form>
+  </dialog>
 </div>
 <script type="module" src="/app.js"></script>
 </body>

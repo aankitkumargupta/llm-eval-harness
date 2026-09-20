@@ -362,7 +362,8 @@ what the platform does before looking at numbers: each capability carries a Buil
 Roadmap tag that mirrors the debt register, so nothing is described as working that is not. The
 Evaluations group opens the Case studies, Evaluate and Saved reports screens; the Workspace group
 lists every task-bar screen. The task bar and every existing screen are unchanged; the sidebar is
-a second way in, collapsible per group, and a toggle on narrow windows.
+a second way in, collapsible per group, collapsible as a whole to a rail of icons (remembered per
+browser), and a toggle on narrow windows. Signing out asks for confirmation first.
 
 
 ```bash

@@ -381,9 +381,17 @@ async function initUser() {
     const u = me.user;
     $("#userchip").textContent = u ? `${u.name} · ${u.role}` : "";
   } catch { /* shown empty; the next API call redirects if the session is gone */ }
-  $("#logoutbtn").addEventListener("click", async () => {
+  // Signing out ends a server-held session, so it asks first: a modal
+  // <dialog> whose "confirm" value is the only thing that clears the session.
+  const signOut = async () => {
     try { await post("/api/auth/logout", {}); } catch { /* clearing anyway */ }
     location.href = "/";
+  };
+  const dlg = $("#logoutdlg");
+  if (dlg) dlg.addEventListener("close", () => { if (dlg.returnValue === "confirm") signOut(); });
+  $("#logoutbtn").addEventListener("click", () => {
+    if (dlg && typeof dlg.showModal === "function") { dlg.returnValue = ""; dlg.showModal(); return; }
+    if (window.confirm("Sign out of the harness?")) signOut();
   });
 }
 const post = (path, data) => api(path, {
@@ -3122,18 +3130,38 @@ function buildSidebar() {
   let open = {};
   try { open = JSON.parse(localStorage.getItem("harness-sidebar") || "{}") || {}; } catch { /* ignore */ }
   const isOpen = (id, dflt) => (id in open ? open[id] : dflt);
-  const draw = () => side.replaceChildren(...STORY_GROUPS.map(([id, label, dflt, items]) => {
-    const o = isOpen(id, dflt);
-    const g = el("div", { class: "sidebar-group" },
-      el("button", { class: "sidebar-group-head", "aria-expanded": String(o),
-        onclick: () => { open[id] = !isOpen(id, dflt); try { localStorage.setItem("harness-sidebar", JSON.stringify(open)); } catch { /* ignore */ } draw(); } },
-        el("span", {}, label), el("span", { class: "chev" }, "›")));
-    if (o) g.append(el("div", { class: "sidebar-group-items" }, items.map(([view, l, d, ic]) =>
-      el("button", { class: "sidebar-item", "data-view": view, "aria-current": String(view === S.view),
-        onclick: () => { go(view); side.classList.remove("open"); } },
-        el("span", { class: "ic" }, ic), el("span", {}, el("b", {}, l), el("span", {}, d))))));
-    return g;
-  }));
+  // The whole sidebar collapses to a rail of icons (remembered per browser);
+  // the groups still fold on their own inside the expanded sidebar.
+  let collapsed = false;
+  try { collapsed = localStorage.getItem("harness-sidebar-collapsed") === "1"; } catch { /* ignore */ }
+  const setCollapsed = on => {
+    collapsed = on;
+    try { localStorage.setItem("harness-sidebar-collapsed", on ? "1" : "0"); } catch { /* ignore */ }
+    draw();
+  };
+  const draw = () => {
+    side.classList.toggle("collapsed", collapsed);
+    side.replaceChildren(
+      el("div", { class: "sidebar-head" },
+        el("span", { class: "sidebar-head-label" }, "Navigation"),
+        el("button", { class: "sidebar-collapse", "aria-expanded": String(!collapsed),
+          title: collapsed ? "Expand the sidebar" : "Collapse the sidebar",
+          "aria-label": collapsed ? "Expand the sidebar" : "Collapse the sidebar",
+          onclick: () => setCollapsed(!collapsed) }, collapsed ? "»" : "«")),
+      ...STORY_GROUPS.map(([id, label, dflt, items]) => {
+        const o = isOpen(id, dflt);
+        const g = el("div", { class: "sidebar-group" },
+          el("button", { class: "sidebar-group-head", "aria-expanded": String(o), title: collapsed ? label : null,
+            onclick: () => { open[id] = !isOpen(id, dflt); try { localStorage.setItem("harness-sidebar", JSON.stringify(open)); } catch { /* ignore */ } draw(); } },
+            el("span", {}, label), el("span", { class: "chev" }, "›")));
+        if (o) g.append(el("div", { class: "sidebar-group-items" }, items.map(([view, l, d, ic]) =>
+          el("button", { class: "sidebar-item", "data-view": view, "aria-current": String(view === S.view),
+            title: collapsed ? l : null,
+            onclick: () => { go(view); side.classList.remove("open"); } },
+            el("span", { class: "ic" }, ic), el("span", {}, el("b", {}, l), el("span", {}, d))))));
+        return g;
+      }));
+  };
   draw();
   $("#sidebtn").addEventListener("click", e => {
     const on = side.classList.toggle("open");

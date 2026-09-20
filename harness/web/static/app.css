@@ -796,6 +796,39 @@ figure svg { max-width: 900px; height: auto; }
 .sidebar-item .ic { width: 18px; text-align: center; color: var(--gold-ink); flex-shrink: 0; margin-top: 1px; }
 .sidebar-item b { display: block; font-size: 13.5px; font-weight: 600; }
 .sidebar-item span:not(.ic) { display: block; font-size: 11.5px; color: var(--ink-3); line-height: 1.4; }
+.sidebar-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 4px 6px 10px; margin-bottom: var(--sp-2); border-bottom: 1px solid var(--hair);
+}
+.sidebar-head-label { font: 600 10.5px/1.4 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
+.sidebar-collapse {
+  background: none; border: 1px solid transparent; border-radius: var(--r-sm); color: var(--ink-3);
+  cursor: pointer; width: 28px; height: 28px; font: 600 15px/1 var(--mono); padding: 0;
+}
+.sidebar-collapse:hover { color: var(--ink); border-color: var(--hair-2); background: var(--surface-2); }
+/* Collapsed: a 60px rail of icons with the labels as tooltips. Only on wide
+   windows; below 1000px the sidebar is an overlay and always shows in full. */
+@media (min-width: 1001px) {
+  .sidebar.collapsed { width: 60px; padding-left: 6px; padding-right: 6px; }
+  .sidebar.collapsed .sidebar-head { justify-content: center; padding: 0 0 6px; }
+  .sidebar.collapsed .sidebar-head-label,
+  .sidebar.collapsed .sidebar-group-head span:not(.chev),
+  .sidebar.collapsed .sidebar-item span:not(.ic) { display: none; }
+  .sidebar.collapsed .sidebar-group-head { justify-content: center; padding: 6px 0; }
+  .sidebar.collapsed .sidebar-item { justify-content: center; padding: 10px 0; min-height: 40px; }
+  .sidebar.collapsed .sidebar-item .ic { width: auto; font-size: 15px; margin: 0; }
+}
+
+/* ---- sign-out dialog --------------------------------------------------- */
+.dlg {
+  border: 1px solid var(--hair-2); border-radius: var(--r); background: var(--ground-2);
+  color: var(--ink); padding: var(--sp-5); width: min(420px, calc(100vw - 32px)); box-shadow: var(--shadow);
+}
+.dlg::backdrop { background: rgba(4, 8, 20, .62); backdrop-filter: blur(3px); }
+.dlg h3 { font-family: var(--serif); font-size: 19px; margin: 0 0 var(--sp-2); }
+.dlg .note { margin: 0 0 var(--sp-4); }
+.dlg-actions { display: flex; justify-content: flex-end; gap: var(--sp-2); }
+
 .sidebtn { display: none; }
 @media (max-width: 1000px) {
   .sidebar { display: none; position: fixed; left: 0; top: var(--topbar-h, 96px); bottom: 0; z-index: 39;
