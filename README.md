@@ -1,4 +1,6 @@
-# Multi-Model LLM Evaluation Harness
+# Evaluation Intelligence
+
+A multi-model LLM evaluation harness.
 
 A model-agnostic benchmarking suite that ranks LLMs for a specific workload against **accuracy, cost, latency, robustness and safety**, and then tells you whether the differences it found are real.
 
@@ -344,6 +346,52 @@ docker run -p 6333:6333 qdrant/qdrant
 You can also override per command without touching config, using `--qdrant-path workspace/qdrant`.
 
 ### 6. Run the browser UI
+
+```bash
+python main.py serve --port 8010
+```
+
+Opens `http://127.0.0.1:8010` in your browser (add `--no-browser` to skip that). The server is
+the standard library's, serves the whole UI from `harness/web/`, and needs nothing beyond the
+core install. Two settings live in `.env` (gitignored; copy `.env.example`):
+
+```
+TOGETHER_API_KEY=...             # or OPENROUTER_API_KEY; whichever providers you route to
+HARNESS_PILOT_PASSWORD=...       # the shared sign-in password; a default is used if unset
+```
+
+`--budget <usd>` puts a hard ceiling on runs started from the UI; `--host` stays `127.0.0.1`
+unless you have read [Deployment](#deployment).
+
+**Sign-in.** The UI opens on a landing page and the product sits behind a sign-in: your name
+and institutional function (attribution only), a role, and the shared pilot password. The password comes from
+`HARNESS_PILOT_PASSWORD` in `.env` (see `.env.example`); when unset, the pilot default is
+used and the console says so at start. It is hashed with PBKDF2 before comparison, sessions
+are HttpOnly cookies that expire after twelve hours, and the role is enforced by the server:
+an Evaluator can read everything, and only an Assurance Lead can start a run that spends the
+provider key. This is a gate for a loopback-only tool, not user accounts, SSO or MFA; do not
+expose the server beyond loopback on its strength.
+
+**Product pages for stakeholders.** Once signed in, a sidebar on the left (`python main.py serve`)
+groups the site into Product, Evaluations and Workspace. The Product pages (Capabilities,
+Architecture, Trust and security, Roadmap, Deployment) are prose for a reader who wants to know
+what the platform does before looking at numbers: each capability carries a Built / Partial /
+Roadmap tag that mirrors the debt register, so nothing is described as working that is not. The
+Evaluations group opens the Case studies, Evaluate and Saved reports screens; the Workspace group
+lists every task-bar screen. The task bar and every existing screen are unchanged; the sidebar is
+a second way in, collapsible per group, collapsible as a whole to a rail of icons (remembered per
+browser), and a toggle on narrow windows. Signing out asks for confirmation first.
+
+
+**What you get after sign-in.** The task bar across the top carries the working screens
+(Overview, Evaluate, Case studies, Prepare, Run, Analyse, Reference, Guide, About); the sidebar
+on the left groups everything as Product, Evaluations and Workspace. Every headline number shows
+its interval and `n`, a comparison that is not separable at the current `n` says so instead of
+ranking, and the cost column comes from the provider's own usage counts.
+
+#### The older Streamlit app
+
+The Streamlit surface predates the web UI and is still shipped; it has no sign-in of its own.
 
 ```bash
 streamlit run app.py
@@ -821,7 +869,7 @@ llm-eval-harness/
 ├── app.py                  # Streamlit app: upload -> probe -> run -> decide
 ├── dashboard.py            # read-only results dashboard
 ├── main.py                 # CLI: validate/estimate/ingest/probes/run/report/
-│                           #      compare/decide/arena/gate/html/runs
+│                           #      compare/decide/arena/gate/html/runs/serve
 ├── prepare_dataset.py      # PDFs + Q&A spreadsheet -> JSONL (+ auto-labeling)
 ├── configs/
 │   ├── profiles/*.yaml     # one per workload (incl. a non-RAG classify profile)
@@ -838,12 +886,14 @@ llm-eval-harness/
 │   ├── orchestration/      # runner, passes, collector, arena, background jobs
 │   ├── store/              # TraceRow schema + append-only Parquet/DuckDB store
 │   ├── report/             # aggregate, stats, decide, gate, html
+│   ├── web/                # the browser UI: stdlib server, sign-in gate, static app
 │   ├── ui/                 # design system + app shell: palette, Altair theme,
 │   │   └── screens/        # charts, layout, page registry, one file per screen
 │   └── cache/              # content-addressed cache (+ a real null cache)
 ├── .streamlit/config.toml  # theme, matched to harness/ui/theme.py
-├── DEPLOYMENT.md           # deployment modes, CI, security, backup
-├── tests/                  # 277 tests, all offline against a fake provider
+├── Dockerfile              # the web UI in a container (DEPLOYMENT.md, Mode C)
+├── DEPLOYMENT.md           # deployment modes, demo link, CI, security, backup
+├── tests/                  # 964 tests, all offline against a fake provider
 └── workspace/              # app-created data, vector store, traces (gitignored)
 ```
 
@@ -860,14 +910,20 @@ The short version:
 
 | Mode | Command | Notes |
 |---|---|---|
-| Local, single user | `streamlit run app.py` | Embedded Qdrant, no Docker, no auth needed |
-| Team (read-only) | `streamlit run dashboard.py` | Makes no API calls, so it cannot spend |
+| Local, single user | `python main.py serve --port 8010` | Loopback only; sign-in with the password from `.env` |
+| Quick demo link | `cloudflared tunnel --url http://127.0.0.1:8010` | Public address while the laptop and the tunnel run; set the password and `--budget` first |
+| Container | `docker build -t llm-eval-harness .` then `docker run ...` | Keys and password passed at run time; TLS proxy in front |
+| Team (read-only) | `streamlit run dashboard.py` | The older read-only surface; makes no API calls |
 | CI gate | `python main.py gate ...` | Exits non-zero on a *significant* regression |
 
-**One rule worth repeating here:** the app accepts an API key and spends money,
-and Streamlit ships no authentication. Bind it to `127.0.0.1` or put an
-authenticated reverse proxy in front before anyone else can reach it, and give
-the team `dashboard.py`, which is read-only by construction.
+Before anyone else can reach the server, in this order:
+
+1. Set `HARNESS_PILOT_PASSWORD` in `.env` (or the container environment). The built-in default
+   is public, and the console tells you when it is in use.
+2. Start with `--budget <usd>`. Only an Assurance Lead can start a paid run, and the ceiling
+   holds even for them.
+3. Terminate TLS at a reverse proxy and keep the server bound to `127.0.0.1` behind it. The
+   sign-in is a shared pilot password with server-side roles, not user accounts, SSO or MFA.
 
 ---
 

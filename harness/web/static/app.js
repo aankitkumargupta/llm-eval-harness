@@ -1,5 +1,5 @@
 /* ===========================================================================
-   Eval Harness: the whole client.
+   Evaluation Intelligence: the whole client.
 
    No framework. The page is a dozen screens over a JSON API, and a render
    function that replaces one container is the entire state management this
@@ -366,8 +366,33 @@ function errMsg(text) {
 async function api(path, opts) {
   const r = await fetch(path, opts);
   const body = await r.json().catch(() => ({ error: "HTTP " + r.status }));
+  // A session that has expired: the server now serves the landing page at
+  // "/", so a reload takes the reader to sign-in with their hash intact.
+  if (r.status === 401 && !path.startsWith("/api/auth/")) { location.reload(); }
   if (!r.ok) throw new Error(body.error || ("HTTP " + r.status));
   return body;
+}
+
+/* Who is signed in (from the HttpOnly session the server holds), shown in the
+   task bar; sign-out clears it server-side and returns to the landing. */
+async function initUser() {
+  try {
+    const me = await api("/api/auth/me");
+    const u = me.user;
+    $("#userchip").textContent = u ? `${u.name} · ${u.role}` : "";
+  } catch { /* shown empty; the next API call redirects if the session is gone */ }
+  // Signing out ends a server-held session, so it asks first: a modal
+  // <dialog> whose "confirm" value is the only thing that clears the session.
+  const signOut = async () => {
+    try { await post("/api/auth/logout", {}); } catch { /* clearing anyway */ }
+    location.href = "/";
+  };
+  const dlg = $("#logoutdlg");
+  if (dlg) dlg.addEventListener("close", () => { if (dlg.returnValue === "confirm") signOut(); });
+  $("#logoutbtn").addEventListener("click", () => {
+    if (dlg && typeof dlg.showModal === "function") { dlg.returnValue = ""; dlg.showModal(); return; }
+    if (window.confirm("Sign out of the harness?")) signOut();
+  });
 }
 const post = (path, data) => api(path, {
   method: "POST", headers: { "Content-Type": "application/json" },
@@ -2905,6 +2930,253 @@ function uploadDataset(kind, file) {
 }
 
 /* --------------------------------------------------------------------------
+   Product pages (left sidebar). For a reader who wants the product before
+   the numbers: what it is, what is built, how it is put together, what is
+   trusted, what is next. Prose and status only; every figure quoted here is
+   a count the product carries, never a metric computed in the browser.
+   -------------------------------------------------------------------------- */
+const STORY_GROUPS = [
+  ["product", "Product", true, [
+    ["capabilities", "Capabilities", "every module, with its honest build status", "◈"],
+    ["architecture", "Architecture", "layers, the TraceRow boundary, twelve invariants", "⌗"],
+    ["trust", "Trust and security", "secrets, sessions, append-only traces", "⛨"],
+    ["roadmap", "Roadmap", "built, open, next", "↗"],
+    ["deployment", "Deployment", "run it, integrate it, share it", "⇪"],
+    ["about", "About", "the four failure modes and every screen", "?"],
+    ["guide", "Guide", "the whole platform end to end", "◷"],
+  ]],
+  ["evaluations", "Evaluations", true, [
+    ["casestudies", "Case studies", "five Indian-government use cases, live results", "☷"],
+    ["evaluate", "Evaluate a model", "data format, sample rows, the run path", "✎"],
+    ["reports", "Saved reports", "frozen with their caveats", "✦"],
+  ]],
+  ["workspace", "Workspace", false, [
+    ["overview", "Overview", "runs, spend, past attempts", "◈"],
+    ["preflight", "Preflight", "validate, estimate the bill", "✓"],
+    ["rag", "Retrieval", "index a corpus", "⛁"],
+    ["probes", "Probes", "adversarial items from your own", "◎"],
+    ["extract", "Extraction", "how an answer is read out", "⌁"],
+    ["runprofile", "Profile run", "pick models, set a budget, run", "▶"],
+    ["run", "Benchmark run", "public benchmarks", "▸"],
+    ["preport", "Profile report", "intervals, paired test", "▦"],
+    ["results", "Benchmark results", "failures kept apart", "▤"],
+    ["decide", "Decide", "cheapest model clearing your bar", "◆"],
+    ["gate", "Gate", "regression gate between runs", "⊘"],
+    ["arena", "Arena", "pairwise judge", "⚔"],
+    ["catalogue", "Catalogue", "benchmarks with licence", "≡"],
+    ["providers", "Providers", "what each provider offers", "◇"],
+    ["connections", "Connections", "keys and model probing", "⇄"],
+  ]],
+];
+
+const status = (s) => el("span", { class: "tag " + (s === "Built" ? "ok" : s === "Partial" ? "warn" : "dim") }, s);
+
+function storyList(rows) {
+  return el("div", { class: "story-list" }, rows.map(([title, st, body], i) =>
+    el("div", { class: "story-row" },
+      el("div", { class: "story-n" }, String(i + 1)),
+      el("div", {}, el("b", {}, title, status(st)), el("p", {}, body)))));
+}
+
+function viewCapabilities() {
+  const w = el("div", {}, head("Product", "Capabilities",
+    "Every module, honest about its build status. Built means it runs today and is " +
+    "covered by the offline test suite; Partial means it runs with a stated gap; " +
+    "Roadmap means it is specified, not shipped."));
+  w.append(kpis([["17", "screens", "accent"], ["12", "invariants enforced"], ["5", "case studies"], ["11", "benchmark specs"]]));
+  w.append(card("Measurement", "The core: what makes a number on this platform worth quoting.", storyList([
+    ["Paired model comparison", "Built", "Every model sees the identical items in the identical order with the identical retrieved context. Binary metrics use an exact McNemar test, continuous ones a paired bootstrap, and Holm-Bonferroni corrects across the family. A gap inside the interval is reported as not separable, with the items it would take to settle it."],
+    ["Metered cost, four buckets", "Built", "Generation, judge, embedding and rerank spend are read from each provider's own usage counts and sum to the total. Cost carries a negative weight in every composite, a positive one is rejected at load, and an unpriced model fails validation rather than ranking as free."],
+    ["Failure kept apart from wrongness", "Built", "Truncation, refusal, extraction failure, format violation, abstention and injection are their own rates beside accuracy. Hidden reasoning tokens are recorded per row, so an answer that ran out of budget reads as a budget finding."],
+    ["Decision layer", "Built", "Decide names the cheapest model that clears your bar at your daily volume and prices every extra point; Gate compares two runs with tolerances; Arena runs a pairwise judge with position swap."],
+    ["Reproducibility", "Built", "Every run writes a manifest: git commit and dirty flag, dataset hash, apparatus hash, seeds, pricing version. A run without a manifest is shown as such, never as a result."],
+  ])));
+  w.append(card("Workloads", "What can be evaluated, and how.", storyList([
+    ["Your own data (classify, generate, answer from documents)", "Built", "A profile is YAML: task, scorer, metrics, weights, apparatus. The Evaluate screen writes it from a few choices, shows the data format with sample rows, and checks an uploaded file line by line."],
+    ["Retrieval apparatus", "Built", "A pinned embedder served locally (English or multilingual), dense, sparse or hybrid retrieval, an embedded vector index, citation checks and abstention scoring. The apparatus is identical for every model and its hash travels with every row."],
+    ["Adversarial probes", "Built", "Unanswerable, noise, injection, paraphrase and positional items derived from your own set, with canaries stored hashed so a leak is detectable and never re-injected."],
+    ["Public benchmarks", "Built", "Eleven specs with pinned checksums and licence flags across multiple choice, maths, instruction following and multilingual maths (Bengali, Telugu), each with an offline fixture and the shared adapter contract suite. Chance-adjusted accuracy sits beside the raw one."],
+    ["Code benchmarks in a sandbox", "Roadmap", "HumanEval-style sets need a process sandbox with no network and hard limits; specified, not shipped, so no code benchmark is offered."],
+  ])));
+  w.append(card("Languages and context", "Built for Indian-language work, honest about coverage.", storyList([
+    ["Eight languages recognised", "Partial", "English, Hindi, Marathi, Bengali, Gujarati, Kannada, Telugu and Hinglish, with a native-script metric, Indic digit normalisation and per-language readings. The multilingual embedder lists Hindi, Marathi and Gujarati; Bengali, Kannada and Telugu retrieval quality is unmeasured and the screens say so."],
+    ["Five case studies", "Built", "Grievance routing, notice translation into Hindi, RTI drafting, scheme question answering and RTI-framework question answering, each with a fictional dataset, a write-up and a live five-model run."],
+    ["Reasoning-model awareness", "Partial", "Hidden reasoning is recorded and reported; there is no per-model switch to turn thinking off yet, so budgets are sized to cover it."],
+    ["Judge calibration", "Partial", "Cohen's kappa against human labels is computed when a dataset carries them; none of the shipped case studies has been human-labelled yet."],
+  ])));
+  w.append(card("Platform", "Around the measurement.", storyList([
+    ["Sign-in gate with server-side roles", "Built", "A landing page, a shared pilot password hashed before comparison, HttpOnly sessions, and an Assurance Lead role required to start a paid run. Pilot-grade: no accounts, SSO or MFA."],
+    ["Saved reports and HTML export", "Built", "A report freezes runs with their caveats; a price fixed tomorrow does not change what a report said today."],
+  ])));
+  return w;
+}
+
+const INVARIANTS_STORY = [
+  ["I1 Paired comparison", "Every model sees the identical item set in the identical order with identical retrieved context; a missing score raises rather than dropping the item."],
+  ["I2 Pinned apparatus", "Embedder, reranker and judge are fixed apparatus; changing one changes the apparatus hash and ends comparability with earlier runs."],
+  ["I3 All spend metered", "Every paid call is attributed to a bucket from the provider's real usage block; an unpriced model is a hard failure, not a zero."],
+  ["I4 Cost negatively weighted", "A positive weight on cost or latency is a config error rejected at load."],
+  ["I5 No unpaired, uncorrected significance", "Exact McNemar or paired bootstrap, Holm-Bonferroni across the family, selected automatically and recorded."],
+  ["I6 Non-significant means non-significant", "No winner is declared when the interval straddles zero; the harness says how many more items are needed."],
+  ["I7 Failure is not wrongness", "Parse failures, truncations, refusals and violations are reported as their own rates."],
+  ["I8 Traces are append-only", "Rows are written once; re-scoring produces a derived table; a budget abort keeps every row already written."],
+  ["I9 Reproducibility", "Every run records git SHA, dirty flag, profile, dataset and apparatus hashes, seeds and pricing version."],
+  ["I10 Determinism where claimed", "Probe generation, sampling and ordering are pure functions of the seed and the dataset hash."],
+  ["I11 Config is the spine", "A profile, model, provider, benchmark or weight is YAML; if it needs code, the seam is wrong."],
+  ["I12 Secrets and canaries never leak", "Keys are redacted from every log, trace, cache key, manifest and export; canaries are stored hashed."],
+];
+
+function viewArchitecture() {
+  const w = el("div", {}, head("Product", "Architecture and foundations",
+    "One boundary and twelve rules. The boundary is a row: everything above it " +
+    "reads rows already on disk and may never open a network connection."));
+  charted(w, "Pipeline", Charts.pipeline());
+  const layers = card("Layers, imports point downward only",
+    "An upward import is a build failure, enforced by a contract rather than by review habit.");
+  [["cli / app / dashboard", "presentation: layout, state and calls, no business logic"],
+   ["decide / report / arena / gate", "analysis over traces only; nothing here touches the network"],
+   ["store (Parquet, DuckDB)", "TraceRow in, tables out; the running/analysis boundary"],
+   ["run / passes / bench", "orchestration: the model × profile × pass matrix, checkpoints, resume, budget"],
+   ["scorers / judges", "pure functions over an item and a response; no clock, no I/O, an injected random generator"],
+   ["providers", "the only code allowed to open a connection, one adapter per provider, one shared contract suite"],
+   ["config / contracts", "depended on by all, depends on nothing"],
+  ].forEach(([c, s]) => layers.append(el("div", { class: "layer" }, el("code", {}, c), el("span", {}, s))));
+  w.append(layers);
+  w.append(card("The TraceRow", "One flat, fully denormalised row per evaluated item, written once.",
+    el("p", { class: "note" }, "Model, profile, pass, item, the retrieved chunks, the answer, every metric, every " +
+      "token count including hidden reasoning, cost by bucket, latency, the apparatus and dataset hashes, and the " +
+      "manifest that ties it to a commit. The schema is versioned and evolves additively; a reader of an old " +
+      "file is a test in the suite.")));
+  const inv = card("The twelve invariants", "Violating any of these is a top-severity bug, even if every test passes.");
+  inv.append(storyList(INVARIANTS_STORY.map(([t, b]) => [t, "Built", b])));
+  w.append(inv);
+  return w;
+}
+
+function viewTrust() {
+  const w = el("div", {}, head("Product", "Trust and security",
+    "What protects the keys, the data and the numbers, stated specifically, and what is " +
+    "deliberately not claimed."));
+  w.append(card("Secrets", null, storyList([
+    ["Keys live in the environment", "Built", "Provider keys are read from .env or the environment, never from YAML, and a redaction step strips them from every log, trace, cache key, manifest and export before it is written."],
+    ["Canaries stored hashed", "Built", "Injection probes plant a canary string; it is kept salted and hashed so a later prompt can never be contaminated with it, and the report counts hits without printing the text."],
+  ])));
+  w.append(card("Access", null, storyList([
+    ["Loopback only", "Built", "The server binds to 127.0.0.1 and refuses to be framed by another site. A key that can spend money is never reachable from the network by default."],
+    ["Sign-in gate", "Built", "A shared pilot password from the environment, hashed with PBKDF2-HMAC-SHA256 (200,000 iterations) before a constant-time comparison; HttpOnly, SameSite cookies that expire after twelve hours; every API route and the app page answer 401 without a session."],
+    ["Roles enforced by the server", "Built", "The two endpoints that start paid runs require the Assurance Lead role and answer 403 otherwise. An Evaluator reads everything else."],
+    ["Accounts, SSO, MFA", "Roadmap", "Not present. The gate suits a pilot behind a firewall; exposing the server beyond loopback needs real authentication in front of it."],
+  ])));
+  w.append(card("Data and numbers", null, storyList([
+    ["Traces are append-only", "Built", "A row is written once with its manifest; re-scoring writes a derived table; an aborted run keeps every row already paid for."],
+    ["Uploads checked line by line", "Built", "A dataset upload is validated before anything is written, capped in size, and confined to the project's data folder under a safe name; nothing is overwritten unless asked."],
+    ["Adversarial content is inert", "Built", "Model output and retrieved passages are treated as data: rendered escaped, never concatenated into a later prompt without an explicit, tested step."],
+    ["Untrusted code runs nowhere", "Roadmap", "Code benchmarks need a process sandbox with no network, no filesystem beyond a scratch directory and hard limits; until it exists, no candidate code is executed by the harness."],
+  ])));
+  return w;
+}
+
+function viewRoadmap() {
+  const w = el("div", {}, head("Product", "Roadmap and honest status",
+    "What is built, what is open with a number in the debt register, and what comes next."));
+  w.append(card("Open now, recorded in docs/DEBT.md", "Each has a register entry with evidence; none is hidden.", storyList([
+    ["R-30 Empty answers in the accuracy denominator", "Partial", "For profile runs an answer that ran out of tokens is scored as wrong rather than absent. The benchmark path already keeps them apart. Which definition to adopt changes reported numbers, so it is a human decision, not a silent fix."],
+    ["R-31 No per-model switch for hidden reasoning", "Roadmap", "Some providers can turn thinking off per request; the seam must reach the cache key and the manifest before it is offered. Until then budgets are sized to cover the reasoning."],
+    ["R-32 A provider reports zero reasoning tokens beside real reasoning", "Partial", "Recorded as unknown, never as zero; the reasoning-rate column is the robust signal."],
+    ["R-33 Resume re-ran the latency lane", "Built", "Fixed the day it was found, with a regression test."],
+    ["R-34 Listing runs loads the whole store", "Partial", "Every screen open waits a few seconds while the store grows; the DuckDB summary query exists and the listing should use it."],
+  ])));
+  w.append(card("Next", "In the order they would be picked up.", storyList([
+    ["Thinking switch seam", "Roadmap", "Per-model request parameters in models.yaml, entering the cache key and manifest, so a classifier can be measured in the mode it would be deployed in."],
+    ["Store listing on DuckDB", "Roadmap", "Sub-second run lists regardless of store size."],
+    ["Code benchmark sandbox", "Roadmap", "Container or hardened subprocess with the hostile battery from the spec: fork bomb, infinite loop, socket, path escape."],
+    ["Human-labelled subsets", "Roadmap", "Thirty labelled items per case study to calibrate the judge and report its agreement."],
+    ["Measured multilingual retrieval", "Roadmap", "Bengali, Kannada and Telugu retrieval checked the way Hindi was, and the coverage note updated from evidence."],
+    ["Accounts in front of the gate", "Roadmap", "SSO or individual accounts when the tool leaves the pilot's laptop."],
+  ])));
+  return w;
+}
+
+function viewDeployment() {
+  const w = el("div", {}, head("Product", "Deployment and integration",
+    "How it runs, how another platform reads it, and how to hand it to a new team."));
+  w.append(card("Run it", "A Python process on one machine.", storyList([
+    ["Local server", "Built", "python main.py serve starts the UI on 127.0.0.1:8010 behind the sign-in. The provider key sits in .env; the pilot password in HARNESS_PILOT_PASSWORD."],
+    ["Embedded index", "Built", "Retrieval uses an embedded vector store under workspace/; one process at a time holds it, which the runner serialises."],
+    ["Offline by default", "Built", "The whole test suite runs with no key and blocked sockets; live runs are opt-in and budget-capped."],
+  ])));
+  w.append(card("Embed it in another platform", "The harness stays one process; another site reads it through its API.", storyList([
+    ["API for another frontend", "Built", "A frontend reads runs, case studies, reports and the Evaluate format through a proxy to this server's /api and computes no metric of its own."],
+    ["Deep links", "Built", "Every screen has a hash another site can link to; the sign-in preserves it, so a link lands on the intended screen."],
+    ["Static hosting beside it", "Partial", "A static frontend can sit in front, but the harness is a Python server that must be hosted alongside it, with real authentication in front once it is exposed."],
+  ])));
+  w.append(card("Hand it to a new team", "Ten minutes from clone to first result on their own data.",
+    el("div", { class: "row" },
+      el("button", { class: "btn", onclick: () => go("evaluate") }, "Open Evaluate"),
+      el("button", { class: "btn ghost", onclick: () => go("guide") }, "Open the Guide"),
+      el("button", { class: "btn ghost", onclick: () => go("casestudies") }, "See the case studies"))));
+  return w;
+}
+
+const STORIES = {
+  capabilities: viewCapabilities, architecture: viewArchitecture, trust: viewTrust,
+  roadmap: viewRoadmap, deployment: viewDeployment,
+};
+
+function buildSidebar() {
+  const side = $("#sidebar");
+  let open = {};
+  try { open = JSON.parse(localStorage.getItem("harness-sidebar") || "{}") || {}; } catch { /* ignore */ }
+  const isOpen = (id, dflt) => (id in open ? open[id] : dflt);
+  // The whole sidebar collapses to a rail of icons (remembered per browser);
+  // the groups still fold on their own inside the expanded sidebar.
+  let collapsed = false;
+  try { collapsed = localStorage.getItem("harness-sidebar-collapsed") === "1"; } catch { /* ignore */ }
+  const setCollapsed = on => {
+    collapsed = on;
+    try { localStorage.setItem("harness-sidebar-collapsed", on ? "1" : "0"); } catch { /* ignore */ }
+    draw();
+  };
+  const draw = () => {
+    side.classList.toggle("collapsed", collapsed);
+    side.replaceChildren(
+      el("div", { class: "sidebar-head" },
+        el("span", { class: "sidebar-head-label" }, "Navigation"),
+        el("button", { class: "sidebar-collapse", "aria-expanded": String(!collapsed),
+          title: collapsed ? "Expand the sidebar" : "Collapse the sidebar",
+          "aria-label": collapsed ? "Expand the sidebar" : "Collapse the sidebar",
+          onclick: () => setCollapsed(!collapsed) }, collapsed ? "»" : "«")),
+      ...STORY_GROUPS.map(([id, label, dflt, items]) => {
+        const o = isOpen(id, dflt);
+        const g = el("div", { class: "sidebar-group" },
+          el("button", { class: "sidebar-group-head", "aria-expanded": String(o), title: collapsed ? label : null,
+            onclick: () => { open[id] = !isOpen(id, dflt); try { localStorage.setItem("harness-sidebar", JSON.stringify(open)); } catch { /* ignore */ } draw(); } },
+            el("span", {}, label), el("span", { class: "chev" }, "›")));
+        if (o) g.append(el("div", { class: "sidebar-group-items" }, items.map(([view, l, d, ic]) =>
+          el("button", { class: "sidebar-item", "data-view": view, "aria-current": String(view === S.view),
+            title: collapsed ? l : null,
+            onclick: () => { go(view); side.classList.remove("open"); } },
+            el("span", { class: "ic" }, ic), el("span", {}, el("b", {}, l), el("span", {}, d))))));
+        return g;
+      }));
+  };
+  draw();
+  $("#sidebtn").addEventListener("click", e => {
+    const on = side.classList.toggle("open");
+    e.currentTarget.setAttribute("aria-expanded", String(on));
+  });
+  // The sidebar sits under the sticky task bar; measure it so both stick.
+  const setTop = () => document.documentElement.style.setProperty("--topbar-h", `${$(".topbar").offsetHeight}px`);
+  setTop();
+  addEventListener("resize", setTop);
+}
+
+function renderSidebar() {
+  for (const b of document.querySelectorAll(".sidebar-item"))
+    b.setAttribute("aria-current", String(b.dataset.view === S.view));
+}
+
+/* --------------------------------------------------------------------------
    Case studies
    -------------------------------------------------------------------------- */
 const CS_LANG = { en: "English", hi: "Hindi", mr: "Marathi", bn: "Bengali", gu: "Gujarati",
@@ -3141,7 +3413,7 @@ const ON_ENTER = {
 };
 
 function go(view) {
-  if (!VIEWS[view]) return;
+  if (!VIEWS[view] && !STORIES[view]) return;
   S.view = view;
   document.querySelector(".tabs")?.classList.remove("open");
   document.querySelector("#menubtn")?.setAttribute("aria-expanded", "false");
@@ -3170,6 +3442,13 @@ function buildNav() {
 }
 
 function renderNav() {
+  renderSidebar();
+  if (STORIES[S.view]) {
+    // A product page: no task-bar section is current and there is no sub-bar.
+    for (const b of document.querySelectorAll(".tab")) b.setAttribute("aria-current", "false");
+    $("#subbar").replaceChildren();
+    return;
+  }
   const sec = SECTION_OF[S.view] || "overview";
   S.sectionLast[sec] = S.view;
 
@@ -3188,7 +3467,7 @@ function renderNav() {
 
 function paint() {
   renderNav();
-  $("#main").replaceChildren((VIEWS[S.view] || viewOverview)());
+  $("#main").replaceChildren((VIEWS[S.view] || STORIES[S.view] || viewOverview)());
   if (S.view === "run") renderKpis();
   window.scrollTo({ top: 0, behavior: "instant" });
 }
@@ -3269,7 +3548,9 @@ function initTheme() {
 
 async function boot() {
   initTheme();
+  initUser();
   buildNav();
+  buildSidebar();
   document.querySelector(".brand").addEventListener("click", e => {
     e.preventDefault();
     go("overview");

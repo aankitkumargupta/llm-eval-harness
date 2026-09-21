@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Eval Harness</title>
+<title>Evaluation Intelligence</title>
 <link rel="stylesheet" href="/app.css">
 </head>
 <body>
@@ -16,17 +16,22 @@
     <div class="barrow">
       <a class="brand" href="#" data-view="overview">
         <span class="mark"></span>
-        <div><b>Eval Harness</b><span>model evaluation</span></div>
+        <div><b>Evaluation Intelligence</b><span>model evaluation</span></div>
       </a>
 
       <nav class="tabs" id="sections" aria-label="Sections"></nav>
 
       <div class="util">
         <span id="storeline" class="storeline">loading…</span>
+        <span id="userchip" class="userchip" title="Signed in as"></span>
         <button id="themebtn" class="iconbtn" title="Switch theme"
                 aria-label="Switch theme">◐</button>
+        <button id="logoutbtn" class="iconbtn" title="Sign out"
+                aria-label="Sign out">⎋</button>
       </div>
 
+      <button id="sidebtn" class="iconbtn sidebtn" aria-expanded="false"
+              aria-label="Product pages" title="Product pages">☷</button>
       <button id="menubtn" class="iconbtn menubtn" aria-expanded="false"
               aria-label="Menu">☰</button>
     </div>
@@ -34,7 +39,28 @@
     <div class="subbar" id="subbar" aria-label="Screens"></div>
   </header>
 
-  <main id="main"><div class="empty"><span class="spin"></span>Loading…</div></main>
+  <!-- The product pages live in a left sidebar: what the harness is, its
+       capabilities, architecture, trust, roadmap and deployment, for a reader
+       who wants the product before the numbers. The screens themselves are
+       unchanged and still reached from the task bar above. -->
+  <div class="app-body">
+    <aside id="sidebar" class="sidebar" aria-label="Product and workspace"></aside>
+    <main id="main"><div class="empty"><span class="spin"></span>Loading…</div></main>
+  </div>
+
+  <!-- Sign-out confirmation. The session is held by the server, so leaving
+       is a deliberate act rather than a stray click on the task bar. -->
+  <dialog id="logoutdlg" class="dlg" aria-labelledby="logoutdlg-title">
+    <form method="dialog">
+      <h3 id="logoutdlg-title">Sign out?</h3>
+      <p class="note">This ends your session on this device. Nothing that has been run or
+        saved is affected; sign in again to continue where you left off.</p>
+      <div class="dlg-actions">
+        <button class="btn ghost sm" value="cancel" type="submit">Stay signed in</button>
+        <button class="btn sm" value="confirm" type="submit" id="logoutconfirm">Sign out</button>
+      </div>
+    </form>
+  </dialog>
 </div>
 <script type="module" src="/app.js"></script>
 </body>

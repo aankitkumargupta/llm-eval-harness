@@ -29,6 +29,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from . import api
+from . import auth as authmod
 from . import case_studies as cs
 from . import platform_api as plat
 from . import profile_api as papi
@@ -48,6 +49,9 @@ class _Handler(BaseHTTPRequestHandler):
     run_cfg: dict = {}
     budget = 0.0
     quiet = False
+    # The sign-in gate (harness/web/auth.py). Injected per server so two
+    # servers in one process do not share sessions.
+    sessions: authmod.Sessions | None = None
 
     server_version = "llm-eval-harness"
     sys_version = ""
@@ -58,7 +62,17 @@ class _Handler(BaseHTTPRequestHandler):
         route, query = parsed.path, parse_qs(parsed.query)
 
         if not route.startswith("/api/"):
+            # The app itself sits behind the sign-in: an anonymous visitor
+            # gets the landing page at the same URL, and the hash they came
+            # with (a deep link such as #evaluate) survives the sign-in reload.
+            if route in ("/", "", "/index.html") and self._session_user()[0] is None:
+                return self._static("/landing.html")
             return self._static(route)
+
+        if route == "/api/auth/me":
+            return self._send_json({"user": self._session_user()[0]})
+        if route not in authmod.OPEN_ROUTES and self._session_user()[0] is None:
+            return self._send_json({"error": "Sign in required."}, status=401)
 
         try:
             self._send_json(self._get_route(route, query))
@@ -153,6 +167,23 @@ class _Handler(BaseHTTPRequestHandler):
         route = urlparse(self.path).path
         try:
             body = self._read_json(MAX_UPLOAD if route == "/api/upload-dataset" else MAX_BODY)
+            if route == "/api/auth/login":
+                token, user = self.sessions.login(
+                    body.get("name"), body.get("department"), body.get("role"), body.get("password"))
+                return self._send_json({"user": user},
+                                       headers=[("Set-Cookie", authmod.Sessions.cookie_for(token))])
+            if route == "/api/auth/logout":
+                self.sessions.logout(self._session_user()[1])
+                return self._send_json({"ok": True},
+                                       headers=[("Set-Cookie", authmod.Sessions.cleared_cookie())])
+            user, _ = self._session_user()
+            if user is None:
+                return self._send_json({"error": "Sign in required."}, status=401)
+            needed = authmod.requires_role(route)
+            if needed and user.get("role") != needed:
+                # Enforced here, not by hiding a button: the two endpoints
+                # that spend the provider key need the Assurance Lead role.
+                return self._send_json({"error": f"This action needs the {needed} role."}, status=403)
             if route == "/api/scaffold-preview":
                 out = sc.preview(_need(body.get("name"), "name"), _need(body.get("task"), "task"),
                                  dict(body.get("options") or {}))
@@ -231,11 +262,21 @@ class _Handler(BaseHTTPRequestHandler):
         except (UnicodeDecodeError, json.JSONDecodeError) as e:
             raise api.ApiError(f"Malformed JSON body: {e}", 400) from e
 
-    def _send_json(self, payload, status: int = 200) -> None:
+    def _session_user(self) -> tuple[dict | None, str | None]:
+        """(signed-in user or None, the cookie token if any)."""
+        token = authmod.Sessions.token_from_cookie(self.headers.get("Cookie"))
+        if self.sessions is None:
+            return None, token
+        return self.sessions.user(token), token
+
+    def _send_json(self, payload, status: int = 200,
+                   headers: list[tuple[str, str]] | None = None) -> None:
         blob = json.dumps(payload, default=str).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(blob)))
+        for name, value in headers or []:
+            self.send_header(name, value)
         # Belt and braces for a local tool: nothing here should ever be framed
         # or sniffed, and the trace store can hold model output from anywhere.
         self.send_header("X-Content-Type-Options", "nosniff")
@@ -288,18 +329,28 @@ def _need(value, name: str):
     return value
 
 
-def make_server(host: str = "127.0.0.1", port: int = 8000, *,
-                store_path: str = "runs/traces", models_cfg: dict | None = None,
-                run_cfg: dict | None = None,
-                budget: float = 0.0, quiet: bool = False) -> ThreadingHTTPServer:
-    """Build the server without starting it, the shape tests need."""
-    handler = type("Handler", (_Handler,), {
+def make_handler(*, store_path: str = "runs/traces", models_cfg: dict | None = None,
+                 run_cfg: dict | None = None, budget: float = 0.0, quiet: bool = False,
+                 sessions: authmod.Sessions | None = None) -> type:
+    """The handler class for one server, its config bound as class attributes."""
+    return type("Handler", (_Handler,), {
         "store_path": store_path,
         "models_cfg": models_cfg or {},
         "run_cfg": run_cfg or {},
         "budget": budget,
         "quiet": quiet,
+        "sessions": sessions if sessions is not None else authmod.Sessions(),
     })
+
+
+def make_server(host: str = "127.0.0.1", port: int = 8000, *,
+                store_path: str = "runs/traces", models_cfg: dict | None = None,
+                run_cfg: dict | None = None,
+                budget: float = 0.0, quiet: bool = False,
+                sessions: authmod.Sessions | None = None) -> ThreadingHTTPServer:
+    """Build the server without starting it, the shape tests need."""
+    handler = make_handler(store_path=store_path, models_cfg=models_cfg, run_cfg=run_cfg,
+                           budget=budget, quiet=quiet, sessions=sessions)
     return ThreadingHTTPServer((host, port), handler)
 
 
@@ -318,6 +369,9 @@ def serve(host: str = "127.0.0.1", port: int = 8000, *,
         print(f"[web] WARNING: bound to {host}, not loopback. This server has "
               f"no authentication and can spend money. Anyone who can reach "
               f"this port can start a run.")
+    if httpd.RequestHandlerClass.sessions.using_default:
+        print(f"[web] sign-in uses the shared pilot password; set {authmod.PASSWORD_ENV} "
+              f"in .env to change it.")
     print("[web] Ctrl-C to stop.")
 
     if open_browser:
