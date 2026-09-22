@@ -37,6 +37,11 @@ class SpecError(ValueError):
 
 
 _VALID_SOURCE_KINDS = ("hf", "url", "local")
+
+#: Generic adapters a spec may name in `adapter:` instead of shipping Python.
+#: Kept here rather than imported from the registry so a spec can be validated
+#: without importing any adapter; a test asserts the two lists agree.
+_VALID_ADAPTERS = ("custom",)
 _VALID_SELECTION = ("fixed", "nearest", "random")
 _VALID_EXTRACTORS = ("regex", "last_capital_letter", "numeric", "boxed",
                      "first_line", "verbatim", "label_set", "judge")
@@ -114,6 +119,13 @@ class BenchmarkSpec:
     contamination: Contamination = field(default_factory=Contamination)
     #: Labels for classification-family specs; empty otherwise.
     label_set: tuple[str, ...] = ()
+    #: Name of a generic adapter to run this spec with (§11/I11: your own
+    #: benchmark is YAML, not Python). Empty means "an adapter registered
+    #: under this spec's id", which is how every shipped benchmark works.
+    adapter: str = ""
+    #: Field-name overrides for a generic adapter, so an existing file does
+    #: not have to be rewritten to be evaluated.
+    fields: dict = field(default_factory=dict)
     path: str = ""
 
     # ------------------------------------------------------------------ #
@@ -151,6 +163,13 @@ class BenchmarkSpec:
                         "metric": self.scoring.metric,
                         "chance_level": self.scoring.chance_level},
             "label_set": list(self.label_set),
+            # Only present when used. A spec that names no generic adapter
+            # hashes exactly as it did before this field existed, so runs
+            # recorded earlier stay comparable with runs recorded now; adding
+            # a key unconditionally would have silently re-hashed every
+            # shipped benchmark and cut the history in two.
+            **({"adapter": self.adapter} if self.adapter else {}),
+            **({"fields": dict(sorted(self.fields.items()))} if self.fields else {}),
         }, sort_keys=True)
 
         return stable_hash("spec/v1", canonical,
@@ -228,6 +247,8 @@ class BenchmarkSpec:
                 perturbations=tuple(cont.get("perturbations", ()) or ()),
             ),
             label_set=tuple(raw.get("label_set", ()) or ()),
+            adapter=str(raw.get("adapter", "") or ""),
+            fields={str(k): str(v) for k, v in (raw.get("fields", {}) or {}).items()},
             path=path,
         )
         problems = spec.validate()
@@ -253,6 +274,13 @@ class BenchmarkSpec:
                        f"{sorted(f.value for f in BenchmarkFamily)}")
         if self.task not in ("direct", "rag", "classify"):
             out.append(f"`task` must be direct|rag|classify, got {self.task!r}")
+        if self.adapter and self.adapter not in _VALID_ADAPTERS:
+            out.append(f"`adapter` must be one of {list(_VALID_ADAPTERS)}, got "
+                       f"{self.adapter!r}. Leave it out to use the adapter "
+                       f"registered under this spec's id.")
+        if self.fields and not self.adapter:
+            out.append("`fields` renames the columns a generic adapter reads, "
+                       "so it only means something with `adapter:` set.")
 
         if self.source.kind not in _VALID_SOURCE_KINDS:
             out.append(f"`source.kind` must be one of {list(_VALID_SOURCE_KINDS)}, "

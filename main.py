@@ -807,8 +807,8 @@ def main() -> int:
     pw = sub.add_parser("serve", help="Local web UI (stdlib server, no framework)")
     pw.add_argument("--port", type=int, default=8000)
     pw.add_argument("--host", default="127.0.0.1",
-                    help="Loopback by default: this server has no auth and can "
-                         "spend money.")
+                    help="Loopback by default: the sign-in is a shared pilot "
+                         "password, not user accounts, and the UI can spend money.")
     pw.add_argument("--budget", type=float, default=0.0,
                     help="Hard USD ceiling applied to runs started from the UI.")
     pw.add_argument("--no-browser", action="store_true")

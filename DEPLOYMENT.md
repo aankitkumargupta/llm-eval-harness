@@ -6,8 +6,8 @@ vector store's single-writer rule, and how to stop a mis-typed config from
 spending money all night.
 
 **Read [Security](#security) before putting this on any machine other people can
-reach.** The app accepts an API key and spends money; it ships with no
-authentication of its own, by design.
+reach.** The app accepts an API key and spends money; its sign-in is a shared
+pilot password (set `HARNESS_PILOT_PASSWORD`), not real authentication, by design.
 
 ---
 
@@ -19,6 +19,7 @@ authentication of its own, by design.
 - [Mode C: Docker](#mode-c--docker)
 - [Mode D: CI regression gate](#mode-d--ci-regression-gate)
 - [Mode E: Scheduled runs](#mode-e--scheduled-runs)
+- [Mode F: Quick demo link from a laptop](#mode-f-quick-demo-link-from-a-laptop)
 - [Security](#security)
 - [Cost controls](#cost-controls)
 - [Data, state and backup](#data-state-and-backup)
@@ -33,14 +34,15 @@ authentication of its own, by design.
 
 | Mode | Who it's for | Vector store | Auth needed |
 |---|---|---|---|
-| **A. Local** | One person evaluating models | Embedded (a folder) | No |
-| **B. Shared server** | A team reading results | Qdrant server | **Yes** |
+| **A. Local** | One person evaluating models | Embedded (a folder) | The built-in sign-in |
+| **B. Shared server** | A team reading results | Qdrant server | **Yes**: password set, TLS proxy |
 | **C. Docker** | Reproducible / cloud | Either | **Yes**, if exposed |
 | **D. CI gate** | Blocking regressions on PRs | Server or none | n/a |
 | **E. Scheduled** | Nightly drift tracking | Server | n/a |
+| **F. Quick demo link** | Showing stakeholders from a laptop | Embedded | Password set, `--budget` set |
 
 Most people want **A** for running evaluations and **D** for protecting the
-main branch. B and C matter when results need to be shared.
+main branch. B, C and F matter when the site needs to be reached by others.
 
 ---
 
@@ -82,35 +84,42 @@ Then check the config and the provider routing:
 python main.py validate --profile regulated_qa
 ```
 
-Launch the UI:
+Add the sign-in password to the same `.env`:
 
-```bash
-streamlit run app.py
+```
+HARNESS_PILOT_PASSWORD=choose_something_private
 ```
 
-It opens at `http://localhost:8501` and writes everything under `workspace/`.
-Qdrant runs **embedded**, a folder, not a server.
+Launch the web UI:
+
+```bash
+python main.py serve --port 8010 --budget 5
+```
+
+It opens at `http://127.0.0.1:8010`, on the landing page; **Sign in** takes a name and
+function (attribution only, written to run manifests), a role and the password. Everything is
+written under `workspace/` and `runs/`. Qdrant runs **embedded**, a folder, not a server.
+`--budget` is the hard USD ceiling for runs started from the UI; leave it off only on a
+machine nobody else can reach.
 
 ### What the UI does, in order
 
-Navigation is a **sidebar**, grouped by purpose. Only the selected screen runs.
+The **task bar** holds the working screens; the **sidebar** groups the site as Product
+(what the platform is and its honest status), Evaluations (case studies, the Evaluate
+wizard, saved reports) and Workspace (every screen again). A new user follows the numbers:
 
-1. **Sidebar**, confirm your key is picked up (each provider shows
-   `connected` / `no key`), set a **budget ceiling**, pick the active dataset.
-2. **Data**, upload PDFs and a Q&A spreadsheet → **Build dataset** →
-   **Ingest**. Ingest embeds every chunk, so it costs money and is one-time per
-   dataset.
-3. **Probes**, generate adversarial items. Free and instant; they cost one
-   model call each later, at run time.
-4. **Run**, pick models, read the estimate (which includes judge calls), run
-   in the background with a live progress bar.
-5. **Overview**, recommendation first, then significance, cost/quality, safety.
-6. **Reports**, every metric, diagnostics, and the export.
-7. **Capabilities**, what this install can do, read from the code.
+1. **Evaluate**, pick the kind of task, read the data format with sample rows, have the
+   profile written and validated, upload your own JSONL. Free.
+2. **Preflight**, `validate` and `estimate` for the profile: every provider, every price,
+   the judge calls included. Free.
+3. **Retrieval** and **Probes** (RAG profiles), build the index and generate adversarial
+   items. Indexing embeds every chunk, so it costs money once per dataset.
+4. **Run**, pick models, start the paired matrix in the background (Assurance Lead only).
+5. **Analyse**, results with intervals, the decision, the gate, the arena; **Saved reports**
+   freeze a run with its caveats; the HTML export is self-contained.
 
-Screens that are not ready yet are disabled in the rail *and say why*, so a
-blocked step is never a silent dead end. The active dataset is read from disk,
-so closing the browser and coming back does not lose your place.
+The older Streamlit app (`streamlit run app.py`, port 8501) is still shipped and has no
+sign-in of its own.
 
 ---
 
@@ -134,23 +143,21 @@ qdrant_url: "http://localhost:6333"
 
 ### 2. Split the roles
 
-Run the **read-only dashboard** for the team and keep the **app** (which spends
-money) restricted to whoever owns the budget:
+The web UI does this itself. Everyone signs in with the shared password; the role they pick
+is enforced by the server: an **Evaluator** reads everything and cannot start a paid run, an
+**Assurance Lead** can, up to `--budget`. Run one server, bound to loopback:
 
 ```bash
-# for everyone, makes no API calls, safe to leave open
-streamlit run dashboard.py --server.port 8502
-
-# for the owner only, behind auth
-streamlit run app.py --server.port 8501
+HARNESS_PILOT_PASSWORD=... python main.py serve --host 127.0.0.1 --port 8010 --budget 20 --no-browser
 ```
 
-The dashboard only reads the trace store. It cannot ingest, cannot run, and
-cannot spend.
+The older read-only Streamlit dashboard is still available for a team that only wants
+numbers (`streamlit run dashboard.py --server.port 8502`); it makes no API calls.
 
 ### 3. Put a reverse proxy in front
 
-Streamlit has no login. Terminate TLS and authenticate at the proxy:
+The sign-in is a pilot gate, not accounts, so terminate TLS at the proxy and add its own
+authentication if the audience is wider than the people who hold the password:
 
 ```nginx
 server {
@@ -160,26 +167,21 @@ server {
     ssl_certificate     /etc/ssl/certs/eval.crt;
     ssl_certificate_key /etc/ssl/private/eval.key;
 
-    auth_basic           "LLM Eval Harness";
+    auth_basic           "Evaluation Intelligence";
     auth_basic_user_file /etc/nginx/.htpasswd;
 
     location / {
-        proxy_pass http://127.0.0.1:8502;   # the dashboard
+        proxy_pass http://127.0.0.1:8010;   # the web UI
         proxy_http_version 1.1;
-        # Streamlit needs websockets; without these the page loads and hangs.
-        proxy_set_header Upgrade    $http_upgrade;
-        proxy_set_header Connection "upgrade";
         proxy_set_header Host       $host;
-        proxy_read_timeout 86400;
+        proxy_read_timeout 600;             # job polling is plain HTTP; no websockets needed
     }
 }
 ```
 
-Bind Streamlit to loopback so it is unreachable except through the proxy:
-
-```bash
-streamlit run dashboard.py --server.address 127.0.0.1 --server.port 8502
-```
+(For the Streamlit dashboard instead, proxy to 8502 and add the `Upgrade` / `Connection
+"upgrade"` headers, since Streamlit needs websockets.) Keep the server bound to `127.0.0.1`
+so it is unreachable except through the proxy.
 
 ---
 
@@ -255,6 +257,24 @@ volumes:
 Then set `qdrant_url: "http://qdrant:6333"` in `configs/run.yaml`.
 
 ---
+
+### The web UI in a container
+
+The Dockerfile at the repo root serves the browser UI (`python main.py serve`: landing
+page, sign-in, product pages and every screen) on port 8010. Keys and the pilot password are
+passed at run time, never baked in; `.dockerignore` keeps `.env`, `workspace/` and `runs/` out
+of the image.
+
+```bash
+docker build -t llm-eval-harness .
+
+docker run -d --name eval-web   -p 127.0.0.1:8010:8010   -e TOGETHER_API_KEY="$TOGETHER_API_KEY"   -e HARNESS_PILOT_PASSWORD="$HARNESS_PILOT_PASSWORD"   -v "$PWD/workspace:/app/workspace"   -v "$PWD/runs:/app/runs"   llm-eval-harness
+```
+
+Then put a reverse proxy with TLS in front of `127.0.0.1:8010` (Caddy, nginx, or the cloud
+host's ingress). The sign-in gate is a shared pilot password with server-side roles, not
+accounts: set `HARNESS_PILOT_PASSWORD` to something private before the port is reachable
+by anyone else, and add `--budget <usd>` to the `CMD` if runs may be started from the UI.
 
 ## Mode D: CI regression gate
 
@@ -339,6 +359,31 @@ same store, so drift shows up without extra tooling.
 
 ---
 
+## Mode F: Quick demo link from a laptop
+
+For showing the site to stakeholders for an afternoon without a host. A Cloudflare quick
+tunnel needs no account and gives a public `trycloudflare.com` address that works while the
+laptop, the server and the tunnel are all running.
+
+```bash
+winget install Cloudflare.cloudflared          # once; brew install cloudflared on macOS
+
+python main.py serve --port 8010 --budget 5 --no-browser
+cloudflared tunnel --url http://127.0.0.1:8010
+```
+
+The public address is printed by the second command. Before starting the tunnel:
+
+- set `HARNESS_PILOT_PASSWORD` in `.env`; the built-in default is public;
+- start the server with `--budget`; anyone with the link and the password who picks the
+  Assurance Lead role can start a paid run up to that ceiling;
+- share the password by a channel other than the link.
+
+The address changes every time the tunnel restarts and disappears when it stops, so this is a
+demo, not a deployment; use Mode B or C for anything that should stay up.
+
+---
+
 ## Security
 
 **The app is not hardened for exposure, and is not meant to be.** Treat it as a
@@ -346,8 +391,8 @@ desktop tool that happens to render in a browser.
 
 | Risk | Why it exists | What to do |
 |---|---|---|
-| **No authentication** | Streamlit ships none | Reverse proxy with auth, or bind to `127.0.0.1` |
-| **Spends money** | Anyone who reaches the app can start a paid run | Restrict the app; give the team the dashboard instead |
+| **A shared password, not accounts** | The sign-in is a pilot gate: one password, roles chosen at sign-in, sessions in process memory | Set `HARNESS_PILOT_PASSWORD`; bind to `127.0.0.1`; TLS and, for a wider audience, the proxy's own auth |
+| **Spends money** | An Assurance Lead session can start a paid run | Start with `--budget`; keep the Assurance Lead role to the people who own the spend |
 | **Accepts an API key** | The sidebar takes a key for convenience | Prefer the environment; the field is per-session and never written to disk |
 | **Reads uploaded files** | PDFs are parsed and indexed | Only ingest documents you trust to that extent |
 | **Corpus is an attack surface** | Retrieved text reaches the model as tokens | This is what the injection probes measure, run them |
@@ -422,7 +467,7 @@ TraceStore("workspace/traces").compact()
 ```bash
 git pull
 pip install -r requirements.txt
-pytest                                   # 277 tests, offline, free
+pytest                                   # 964 tests, offline, free
 python main.py validate --profile <your_profile>
 ```
 
@@ -472,6 +517,11 @@ python main.py runs
 
 # The offline suite: no key, no network, no cost
 pytest
+
+# The web UI: the landing answers 200, and the session probe answers
+# {"user": null} without a cookie; both are free and need no sign-in
+curl -fsS -o /dev/null http://127.0.0.1:8010/
+curl -fsS http://127.0.0.1:8010/api/auth/me
 ```
 
 For a monitored deployment, `validate` is the right liveness probe: it exits
@@ -490,8 +540,10 @@ Before letting anyone else touch it:
 - [ ] `budget_usd` is set in `configs/run.yaml`
 - [ ] `configs/pricing.yaml` refreshed: `validate` warns when it is stale, and
       stale prices mis-rank models rather than just mis-stating dollars
-- [ ] The app is bound to loopback or behind authenticated TLS
-- [ ] The team gets `dashboard.py`, not `app.py`
+- [ ] `HARNESS_PILOT_PASSWORD` is set; the console no longer says the default is in use
+- [ ] `python main.py serve` runs with `--budget`, bound to loopback, behind TLS
+- [ ] Only the people who own the spend know to pick the Assurance Lead role
+- [ ] The image, if any, was built from `.dockerignore`'s view of the tree: no `.env`, no `workspace/`
 - [ ] `workspace/traces/` and `workspace/data/` are backed up
 - [ ] A known-good `run_id` is recorded somewhere as the gate's baseline
 - [ ] The CI gate has `--budget` and `--max-cost` set

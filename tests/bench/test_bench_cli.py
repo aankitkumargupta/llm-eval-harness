@@ -77,12 +77,14 @@ def test_bench_list_reports_the_licence_and_chance_level(capsys):
 def test_bench_validate_passes_for_the_shipped_specs(capsys):
     code, out = _run(["bench", "validate"], capsys)
     assert code == 0
-    # Count against the registry rather than a literal: the catalogue grows,
-    # and a hardcoded number turns "someone added a benchmark" into a test
-    # failure that says nothing about whether it works.
-    from harness.bench import registry
+    # Count against the specs on disk rather than a literal or the adapter
+    # registry: the catalogue grows, and a benchmark declared in YAML
+    # (`adapter: custom`) has a spec with no id-keyed adapter, so counting
+    # registered adapters would under-count and fail on any install where
+    # someone added their own set.
+    from harness.bench.spec import available_specs
 
-    assert out.count("[ok]") == len(registry.known())
+    assert out.count("[ok]") == len(available_specs())
     assert "spec_hash=" in out
 
 

@@ -1,0 +1,37 @@
+# A benchmark declared, not programmed: this file plus the JSONL beside it is
+# the whole thing. `adapter: custom` is what makes that possible, and this
+# fixture is what proves it in the shared adapter contract suite.
+id: custom_demo
+version: 1
+family: multiple_choice
+task: direct
+adapter: custom
+
+source:
+  kind: local
+  ref: tests/bench/fixtures/custom_demo/items.jsonl
+  split: test
+  licence: "in-house fixture"
+  commercial_use: true
+  citation: "synthetic, written for this test"
+
+sampling:
+  limit: null
+  seed: 1729
+
+prompt:
+  few_shot: {n: 0}
+  decoding: {temperature: 0.0, max_tokens: 512, top_p: 1.0}
+
+scoring:
+  mode: generative
+  extraction:
+    chain:
+      - {kind: regex, pattern: 'Answer:\s*\(?([A-D])\)?'}
+      - {kind: last_capital_letter}
+  metric: accuracy
+  chance_level: 0.25
+
+reporting:
+  primary_metric: accuracy
+  also: [extraction_failure_rate, cost_usd, latency_p95_ms]

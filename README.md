@@ -1,4 +1,6 @@
-# Multi-Model LLM Evaluation Harness
+# Evaluation Intelligence
+
+A multi-model LLM evaluation harness.
 
 A model-agnostic benchmarking suite that ranks LLMs for a specific workload against **accuracy, cost, latency, robustness and safety**, and then tells you whether the differences it found are real.
 
@@ -34,6 +36,7 @@ It runs against **any provider**: Together, OpenAI, Anthropic, Groq, Fireworks, 
 - [Cost control](#cost-control)
 - [Non-RAG workloads](#non-rag-workloads)
 - [Preparing your own dataset](#preparing-your-own-dataset)
+- [Your own benchmark](#your-own-benchmark)
 - [Data format](#data-format)
 - [Configuration](#configuration)
 - [Understanding the results](#understanding-the-results)
@@ -346,6 +349,52 @@ You can also override per command without touching config, using `--qdrant-path 
 ### 6. Run the browser UI
 
 ```bash
+python main.py serve --port 8010
+```
+
+Opens `http://127.0.0.1:8010` in your browser (add `--no-browser` to skip that). The server is
+the standard library's, serves the whole UI from `harness/web/`, and needs nothing beyond the
+core install. Two settings live in `.env` (gitignored; copy `.env.example`):
+
+```
+TOGETHER_API_KEY=...             # or OPENROUTER_API_KEY; whichever providers you route to
+HARNESS_PILOT_PASSWORD=...       # the shared sign-in password; a default is used if unset
+```
+
+`--budget <usd>` puts a hard ceiling on runs started from the UI; `--host` stays `127.0.0.1`
+unless you have read [Deployment](#deployment).
+
+**Sign-in.** The UI opens on a landing page and the product sits behind a sign-in: your name
+and institutional function (attribution only), a role, and the shared pilot password. The password comes from
+`HARNESS_PILOT_PASSWORD` in `.env` (see `.env.example`); when unset, the pilot default is
+used and the console says so at start. It is hashed with PBKDF2 before comparison, sessions
+are HttpOnly cookies that expire after twelve hours, and the role is enforced by the server:
+an Evaluator can read everything, and only an Assurance Lead can start a run that spends the
+provider key. This is a gate for a loopback-only tool, not user accounts, SSO or MFA; do not
+expose the server beyond loopback on its strength.
+
+**Product pages for stakeholders.** Once signed in, a sidebar on the left (`python main.py serve`)
+groups the site into Product, Evaluations and Workspace. The Product pages (Capabilities,
+Architecture, Trust and security, Roadmap, Deployment) are prose for a reader who wants to know
+what the platform does before looking at numbers: each capability carries a Built / Partial /
+Roadmap tag that mirrors the debt register, so nothing is described as working that is not. The
+Evaluations group opens the Case studies, Evaluate and Saved reports screens; the Workspace group
+lists every task-bar screen. The task bar and every existing screen are unchanged; the sidebar is
+a second way in, collapsible per group, collapsible as a whole to a rail of icons (remembered per
+browser), and a toggle on narrow windows. Signing out asks for confirmation first.
+
+
+**What you get after sign-in.** The task bar across the top carries the working screens
+(Overview, Evaluate, Case studies, Prepare, Run, Analyse, Reference, Guide, About); the sidebar
+on the left groups everything as Product, Evaluations and Workspace. Every headline number shows
+its interval and `n`, a comparison that is not separable at the current `n` says so instead of
+ranking, and the cost column comes from the provider's own usage counts.
+
+#### The older Streamlit app
+
+The Streamlit surface predates the web UI and is still shipped; it has no sign-in of its own.
+
+```bash
 streamlit run app.py
 ```
 
@@ -391,7 +440,7 @@ The charts follow automatically; `harness/ui/theme.py` reads the configured base
 
 ### 7. Run on your own data
 
-**Start in the browser.** The Evaluate screen (second button in the task bar) walks a new user through it: pick the kind of task (label, generate, answer from documents, or a public benchmark), see the data format with sample rows you can copy or download, have the profile written from a few choices and validated as you type, upload your own JSONL (checked line by line before anything is written), then follow the numbered screens: Preflight, Retrieval and Probes for RAG, Profile run, Profile report, Decide, Saved reports. The same commands are printed beside each step.
+**Start in the browser.** The Evaluate screen (second button in the task bar) walks a new user through it: pick the kind of task (label, generate, answer from documents, [your own benchmark](#your-own-benchmark), or a public benchmark), see the data format with sample rows you can copy or download, have the profile written from a few choices and validated as you type, upload your own JSONL (checked line by line before anything is written), then follow the numbered screens: Preflight, Retrieval and Probes for RAG, Profile run, Profile report, Decide, Saved reports. The same commands are printed beside each step.
 
 **Or from the terminal.** Turn PDFs and a Q&A spreadsheet into the JSONL the harness reads, with gold passages auto-labeled:
 
@@ -741,6 +790,68 @@ Two things to get right:
 
 ---
 
+## Your own benchmark
+
+A public benchmark tells you how a model does on someone else's questions. Your own set is the
+only one guaranteed uncontaminated, and it is the one that matches the work. Declaring one takes
+a spec file and your rows. **No Python, no adapter module, no registry entry.**
+
+**Start in the browser.** Evaluate, then "Bring your own benchmark". Six steps: pick the shape of
+your rows, read the format with sample rows you can copy or download, name it and watch the spec
+validate as you type, create it, upload your own file, then run it. The same commands are printed
+beside each step.
+
+Four shapes are read directly:
+
+| Shape | Your rows carry | Scored by |
+|---|---|---|
+| Multiple choice | `question`, `options`, `answer` | The option letter, with chance-adjusted accuracy beside the raw number |
+| Short answer | `question`, `answer` | Exact match after case and punctuation are normalised; numbers compared as numbers |
+| Number | `question`, `answer` | Numeric equivalence, so `1,000` and `1000` and `1000.0` are one answer |
+| Label | `question`, `answer` plus a declared `label_set` | Exact match against your labels; a reply outside the set is a format failure, not a wrong label |
+
+The answer may be written however your file already has it. For multiple choice that means the
+option letter, the option number counting from one, or the option text itself; all three resolve
+to the same option, and a row whose answer names no option is refused when the file loads rather
+than scored zero for every model.
+
+What the screen writes is two files and nothing else:
+
+```
+configs/benchmarks/<id>.yaml        the spec, every line commented
+data/benchmarks/<id>/items.jsonl    your rows
+```
+
+The spec carries `adapter: custom`, which points at the generic adapter in
+`harness/bench/adapters/custom.py`. From there it is an ordinary benchmark: it appears in the
+catalogue and in `bench list`, and it shares the trace store, the cost meter, the cache, the
+paired significance test and the gate with every shipped set.
+
+```bash
+python main.py bench validate --benchmark my_set
+python main.py bench run --benchmark my_set --models <model-a> <model-b> --limit 50 --seed 1729
+python main.py bench report --run-id <the id printed above>
+```
+
+Three things it does deliberately, because each one is a common way a benchmark number becomes
+a lie:
+
+- **Chance level is written from the options you declare.** 25% on four options is not "25% good",
+  so the report prints accuracy above guessing beside the raw number.
+- **A row the extractor cannot read is not a wrong answer.** It scores as not applicable and is
+  counted in the extraction-failure rate, never in the accuracy numerator.
+- **The data's own mistakes are loud.** A duplicate id, a missing answer, a gold label outside the
+  declared set, or an answer that names no option stops the load with the line number, rather than
+  dropping the row and quietly changing the item set behind your back.
+
+**When you still need Python.** The generic adapter reads those four shapes and refuses anything
+else rather than guessing. A benchmark that executes code, retrieves passages, holds a
+conversation or checks programmatic constraints needs its own adapter in
+`harness/bench/adapters/`, a line in `harness/bench/registry.py` and a committed fixture. The
+existing adapters are the template, and the shared contract suite covers both kinds equally.
+
+---
+
 ## Data format
 
 Both files are **JSONL** (one JSON object per line, UTF-8).
@@ -821,7 +932,7 @@ llm-eval-harness/
 ├── app.py                  # Streamlit app: upload -> probe -> run -> decide
 ├── dashboard.py            # read-only results dashboard
 ├── main.py                 # CLI: validate/estimate/ingest/probes/run/report/
-│                           #      compare/decide/arena/gate/html/runs
+│                           #      compare/decide/arena/gate/html/runs/serve
 ├── prepare_dataset.py      # PDFs + Q&A spreadsheet -> JSONL (+ auto-labeling)
 ├── configs/
 │   ├── profiles/*.yaml     # one per workload (incl. a non-RAG classify profile)
@@ -838,12 +949,16 @@ llm-eval-harness/
 │   ├── orchestration/      # runner, passes, collector, arena, background jobs
 │   ├── store/              # TraceRow schema + append-only Parquet/DuckDB store
 │   ├── report/             # aggregate, stats, decide, gate, html
+│   ├── web/                # the browser UI: stdlib server, sign-in gate, static app
+│   ├── bench/              # benchmark subsystem: specs, adapters (incl. the
+│   │                       # generic one), extraction, fetch, runner, CLI
 │   ├── ui/                 # design system + app shell: palette, Altair theme,
 │   │   └── screens/        # charts, layout, page registry, one file per screen
 │   └── cache/              # content-addressed cache (+ a real null cache)
 ├── .streamlit/config.toml  # theme, matched to harness/ui/theme.py
-├── DEPLOYMENT.md           # deployment modes, CI, security, backup
-├── tests/                  # 277 tests, all offline against a fake provider
+├── Dockerfile              # the web UI in a container (DEPLOYMENT.md, Mode C)
+├── DEPLOYMENT.md           # deployment modes, demo link, CI, security, backup
+├── tests/                  # 964 tests, all offline against a fake provider
 └── workspace/              # app-created data, vector store, traces (gitignored)
 ```
 
@@ -860,14 +975,20 @@ The short version:
 
 | Mode | Command | Notes |
 |---|---|---|
-| Local, single user | `streamlit run app.py` | Embedded Qdrant, no Docker, no auth needed |
-| Team (read-only) | `streamlit run dashboard.py` | Makes no API calls, so it cannot spend |
+| Local, single user | `python main.py serve --port 8010` | Loopback only; sign-in with the password from `.env` |
+| Quick demo link | `cloudflared tunnel --url http://127.0.0.1:8010` | Public address while the laptop and the tunnel run; set the password and `--budget` first |
+| Container | `docker build -t llm-eval-harness .` then `docker run ...` | Keys and password passed at run time; TLS proxy in front |
+| Team (read-only) | `streamlit run dashboard.py` | The older read-only surface; makes no API calls |
 | CI gate | `python main.py gate ...` | Exits non-zero on a *significant* regression |
 
-**One rule worth repeating here:** the app accepts an API key and spends money,
-and Streamlit ships no authentication. Bind it to `127.0.0.1` or put an
-authenticated reverse proxy in front before anyone else can reach it, and give
-the team `dashboard.py`, which is read-only by construction.
+Before anyone else can reach the server, in this order:
+
+1. Set `HARNESS_PILOT_PASSWORD` in `.env` (or the container environment). The built-in default
+   is public, and the console tells you when it is in use.
+2. Start with `--budget <usd>`. Only an Assurance Lead can start a paid run, and the ceiling
+   holds even for them.
+3. Terminate TLS at a reverse proxy and keep the server bound to `127.0.0.1` behind it. The
+   sign-in is a shared pilot password with server-side roles, not user accounts, SSO or MFA.
 
 ---
 

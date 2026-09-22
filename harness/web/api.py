@@ -91,7 +91,6 @@ def list_benchmarks() -> dict:
     A spec without an adapter is a half-built benchmark that fails only when
     someone selects it, so it is reported rather than filtered out.
     """
-    adapters = set(bench_registry.known())
     out = []
     for path in available_specs():
         try:
@@ -100,7 +99,7 @@ def list_benchmarks() -> dict:
             out.append({"id": path.stem, "invalid": str(e), "has_adapter": False})
             continue
         row = _spec_json(spec)
-        row["has_adapter"] = spec.id in adapters
+        row["has_adapter"] = bench_registry.has_adapter(spec)
         out.append(row)
     return {"benchmarks": out}
 
@@ -326,7 +325,7 @@ def start_run(*, benchmark: str, models: list[str], limit: int, seed: int,
     from ..orchestration.jobs import any_running, new_job
 
     spec = _require_spec(benchmark)
-    if spec.id not in bench_registry.known():
+    if not bench_registry.has_adapter(spec):
         raise ApiError(f"No adapter registered for {spec.id!r}.", 400)
     if spec.requires_licence_ack() and not acknowledge_licence:
         raise ApiError(

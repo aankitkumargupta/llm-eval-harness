@@ -25,8 +25,13 @@ from harness.bench.spec import load_spec
 
 ALL_BENCHMARKS = registry.known()
 
+#: A benchmark declared in YAML rather than programmed (`adapter: custom`) is
+#: a benchmark, so it faces this same suite. Without it, "bring your own set"
+#: would be a second-class path that nothing checks.
+CUSTOM_FIXTURE = "tests/bench/fixtures/custom_demo/spec.yaml"
 
-@pytest.fixture(params=ALL_BENCHMARKS)
+
+@pytest.fixture(params=[*ALL_BENCHMARKS, CUSTOM_FIXTURE])
 def adapter(request):
     spec = load_spec(request.param)
     return registry.build(spec)
@@ -44,9 +49,20 @@ def test_every_shipped_benchmark_has_a_spec_and_an_adapter():
     benchmark that fails only when someone tries to run it."""
     from harness.bench.spec import available_specs
 
-    spec_ids = {p.stem for p in available_specs()}
-    assert spec_ids == set(ALL_BENCHMARKS), (
-        f"specs {sorted(spec_ids)} != adapters {sorted(ALL_BENCHMARKS)}")
+    # Two ways to be complete: an adapter registered under the spec's own id
+    # (every shipped benchmark), or a generic adapter the spec names. Anything
+    # else fails only when someone tries to run it.
+    by_id, by_generic = set(), {}
+    for path in available_specs():
+        spec = load_spec(path)
+        (by_generic.setdefault(path.stem, spec.adapter) if spec.adapter
+         else by_id.add(path.stem))
+
+    assert by_id == set(ALL_BENCHMARKS), (
+        f"specs {sorted(by_id)} != adapters {sorted(ALL_BENCHMARKS)}")
+    unknown = {k: v for k, v in by_generic.items()
+               if v not in registry.generic_known()}
+    assert not unknown, f"specs naming an adapter that does not exist: {unknown}"
 
 
 # --------------------------------------------------------------------------- #
