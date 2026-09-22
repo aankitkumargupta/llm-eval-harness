@@ -34,6 +34,7 @@ from . import case_studies as cs
 from . import platform_api as plat
 from . import profile_api as papi
 from . import reports as rep
+from . import bench_scaffold as bsc
 from . import scaffold as sc
 
 STATIC = Path(__file__).parent / "static"
@@ -148,6 +149,8 @@ class _Handler(BaseHTTPRequestHandler):
             return plat.rag_status(self.run_cfg)
         if route == "/api/scaffold-spec":
             return sc.describe(one("task", "classify"))
+        if route == "/api/bench-scaffold-spec":
+            return bsc.describe(one("shape", "multiple_choice"))
         if route == "/api/case-studies":
             return cs.list_case_studies(self.store_path)
         if route == "/api/case-study":
@@ -166,7 +169,9 @@ class _Handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:                      # noqa: N802 - stdlib API
         route = urlparse(self.path).path
         try:
-            body = self._read_json(MAX_UPLOAD if route == "/api/upload-dataset" else MAX_BODY)
+            body = self._read_json(
+                MAX_UPLOAD if route in ("/api/upload-dataset", "/api/upload-benchmark")
+                else MAX_BODY)
             if route == "/api/auth/login":
                 token, user = self.sessions.login(
                     body.get("name"), body.get("department"), body.get("role"), body.get("password"))
@@ -184,7 +189,22 @@ class _Handler(BaseHTTPRequestHandler):
                 # Enforced here, not by hiding a button: the two endpoints
                 # that spend the provider key need the Assurance Lead role.
                 return self._send_json({"error": f"This action needs the {needed} role."}, status=403)
-            if route == "/api/scaffold-preview":
+            if route == "/api/bench-scaffold-preview":
+                out = bsc.preview(str(body.get("id") or ""), _need(body.get("shape"), "shape"),
+                                  dict(body.get("options") or {}))
+            elif route == "/api/bench-scaffold":
+                out = bsc.scaffold(_need(body.get("id"), "id"), _need(body.get("shape"), "shape"),
+                                   dict(body.get("options") or {}),
+                                   with_samples=bool(body.get("with_samples", True)),
+                                   overwrite=bool(body.get("overwrite")))
+            elif route == "/api/upload-benchmark":
+                labels = body.get("labels") or ""
+                if isinstance(labels, str):
+                    labels = [x.strip() for x in labels.replace("\n", ",").split(",") if x.strip()]
+                out = bsc.write_data(_need(body.get("id"), "id"), _need(body.get("shape"), "shape"),
+                                     str(body.get("text") or ""), labels=list(labels),
+                                     overwrite=bool(body.get("overwrite")))
+            elif route == "/api/scaffold-preview":
                 out = sc.preview(_need(body.get("name"), "name"), _need(body.get("task"), "task"),
                                  dict(body.get("options") or {}))
             elif route == "/api/scaffold":

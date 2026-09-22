@@ -437,7 +437,12 @@ const S = {
   // evaluate (start here)
   ev: { task: "classify", spec: null, name: "", labels: "", scorer: "", sys: "", maxTokens: "",
         multilingual: false, language: "en", yaml: "", yamlErr: "", created: null, createErr: "", uploads: {},
-        uploadErr: "", overwrite: false, bench: "" },
+        uploadErr: "", overwrite: false, bench: "",
+        // "Bring your own benchmark": the same walk as a profile, for a set
+        // you declare rather than one that shipped.
+        bshape: "multiple_choice", bspec: null, bid: "", blabels: "", bopts: 4,
+        bmaxTokens: "", blicence: "", bseed: "1729", byaml: "", byamlErr: "",
+        bcreated: null, bcreateErr: "", bupload: null, buploadErr: "" },
   connections: null, connProvider: "", connKey: "", connDetail: null,
   connPicked: new Set(), modelsYaml: null,
   error: "",
@@ -1574,8 +1579,14 @@ function viewCatalogue() {
     el("td", { class: "m" }, b.spec_hash ? b.spec_hash.slice(0, 12) : "n/a"),
   ]));
   w.append(el("p", { class: "note" },
-    "Adding one is a YAML spec, an adapter module, a registry line and a " +
-    "fixture, never the runner, the store, the stats layer or the reporter."));
+    "Adding one of the four ordinary shapes (multiple choice, short answer, a " +
+    "number, a label) is a YAML spec and your rows, written for you by Evaluate › " +
+    "Bring your own benchmark. A shape the generic reader cannot judge needs an " +
+    "adapter module, a registry line and a fixture as well, never the runner, the " +
+    "store, the stats layer or the reporter."),
+    el("div", { class: "row" },
+      el("button", { class: "btn sm", onclick: () => { S.ev.task = "own_benchmark"; go("evaluate"); loadEvalSpec(); } },
+        "Declare your own benchmark")));
   return w;
 }
 
@@ -2616,6 +2627,10 @@ const EV_TASKS = [
   ["rag", "Answer from your documents",
    "Questions over a corpus you supply. Retrieval is pinned as apparatus, and " +
    "faithfulness, abstention and injection resistance are scored beside accuracy."],
+  ["own_benchmark", "Bring your own benchmark",
+   "Your own labelled set, run as a benchmark: chance-adjusted accuracy, extraction " +
+   "failures kept apart from wrong answers, paired significance, metered cost. A spec " +
+   "file and your rows; no code."],
   ["benchmark", "Run a public benchmark",
    "Pick from the catalogue (MMLU-Pro, GSM8K, IFEval, HellaSwag, MGSM and more), run it " +
    "live, and read chance-adjusted accuracy with failures kept apart from wrongness."],
@@ -2664,6 +2679,7 @@ function viewEvaluate() {
   w.append(pick);
 
   if (E.task === "benchmark") { w.append(...evaluateBenchmark()); return w; }
+  if (E.task === "own_benchmark") { w.append(...evaluateOwnBenchmark()); return w; }
 
   const spec = E.spec;
   if (!spec) { w.append(el("p", { class: "note" }, "Loading the format…")); return w; }
@@ -2840,7 +2856,15 @@ function evaluateBenchmark() {
   out.push(s);
 
   const add = card("4. Add a benchmark of your own",
-    "A private set is the only one guaranteed uncontaminated. It takes one YAML spec, one adapter, one fixture, one registry line.");
+    "A private set is the only one guaranteed uncontaminated, and for the usual shapes it needs no code at all.");
+  add.append(el("p", { class: "note" },
+    "If your rows are multiple choice, a short answer, a number or a label, use " +
+    "\u201cBring your own benchmark\u201d above: it writes the spec for you, checks your " +
+    "file line by line and runs through this same machinery. The spec below is what " +
+    "that screen produces, shown here for anyone who would rather write it by hand."),
+    el("div", { class: "row", style: "margin:10px 0" },
+      el("button", { class: "btn sm", onclick: () => { S.ev.task = "own_benchmark"; render(); loadEvalSpec(); } },
+        "Open the guided path")));
   add.append(codeBox([
     "# configs/benchmarks/my_set.yaml",
     "id: my_set",
@@ -2860,11 +2884,196 @@ function evaluateBenchmark() {
     "  chance_level: 0.25",
   ].join("\n"), "my_set.yaml"));
   add.append(el("ul", { class: "cs-ul" },
-    el("li", {}, "The adapter goes in harness/bench/adapters/ with pure load, prompt, extract and score methods; copy the closest family (arc.py for multiple choice, gsm8k.py for numeric)."),
-    el("li", {}, "Register it in harness/bench/registry.py and commit a 20-item fixture under tests/bench/fixtures/my_set/ so the whole path is tested offline."),
-    el("li", {}, "The shared adapter contract suite runs against it automatically; extraction failures stay separate from wrong answers.")));
+    el("li", {}, "A spec with adapter: custom needs no Python: the generic adapter reads your rows, and the shared adapter contract suite already covers it."),
+    el("li", {}, "A shape the generic reader cannot judge (code execution, retrieval, multi-turn) still needs its own adapter in harness/bench/adapters/ with pure load, prompt, extract and score methods; copy the closest family (arc.py for multiple choice, gsm8k.py for numeric), register it in harness/bench/registry.py, and commit a 20-item fixture under tests/bench/fixtures/."),
+    el("li", {}, "Either way extraction failures stay separate from wrong answers, and the run shares the trace store, cost meter and paired test with everything else.")));
   out.push(add);
   return out;
+}
+
+/* --------------------------------------------------------------------------
+   Bring your own benchmark. The same five steps as a profile, for a set you
+   declare: pick the shape, see the rows, name it, upload, run. Everything the
+   screen shows comes from /api/bench-scaffold-spec; nothing is computed here.
+   -------------------------------------------------------------------------- */
+function evaluateOwnBenchmark() {
+  const E = S.ev;
+  const out = [];
+  const spec = E.bspec;
+
+  const pick = card("2. What shape are your rows?",
+    "The shape fixes the prompt, the extraction chain and what a number means. " +
+    "Anything with more structure than these (code to execute, passages to retrieve, " +
+    "a conversation) needs its own adapter, and the screen says so rather than guessing.");
+  pick.append(el("div", { class: "evpicks" }, (spec ? spec.shapes : []).map(s =>
+    el("button", { class: "evpick", "aria-pressed": String(E.bshape === s.id),
+      onclick: () => { E.bshape = s.id; E.bspec = null; E.byaml = ""; E.bcreated = null;
+                       E.bupload = null; render(); loadBenchSpec(); } },
+      el("b", {}, s.title), el("span", {}, s.body)))));
+  out.push(pick);
+  if (!spec) { out.push(el("p", { class: "note" }, "Loading the format\u2026")); return out; }
+
+  // --- rows ---------------------------------------------------------------
+  const data = card("3. Prepare your rows",
+    "One JSON object per line (JSONL), UTF-8. Three rows are enough to try the whole " +
+    "path; sixty or more before a paired test can separate models a few points apart.");
+  data.append(el("h3", { class: "cs-h" }, "items.jsonl"), fieldsTable(spec.fields),
+    el("p", { class: "note" }, "Sample rows for this shape, copy them and replace the content:"),
+    codeBox(spec.samples_jsonl, "items.jsonl"),
+    el("h3", { class: "cs-h" }, "Before you write yours"),
+    el("ul", { class: "cs-ul" }, spec.notes.map(n => el("li", {}, n))));
+  out.push(data);
+
+  // --- the spec -----------------------------------------------------------
+  const form = card("4. Name it and check the spec",
+    "These choices become a benchmark spec. It is validated as you type, and the YAML " +
+    "on the right is exactly what gets written to configs/benchmarks/.");
+  const f = (label, control) => el("div", { class: "f" }, el("label", {}, label), control);
+  const left = el("div", {},
+    f("Benchmark id (letters, digits, underscores)",
+      el("input", { type: "text", value: E.bid, placeholder: "my_department_set",
+        oninput: e => { E.bid = e.target.value; previewBenchSpec(); } })),
+    E.bshape === "classify" ? f("Labels, comma-separated",
+      el("textarea", { style: "min-height:56px",
+        oninput: e => { E.blabels = e.target.value; previewBenchSpec(); } }, E.blabels)) : null,
+    E.bshape === "multiple_choice" ? f("Options per item (sets the chance level)",
+      el("input", { type: "number", min: 2, max: 10, value: E.bopts,
+        oninput: e => { E.bopts = e.target.value; previewBenchSpec(); } })) : null,
+    f("Max tokens per answer",
+      el("input", { type: "number", min: 16, value: E.bmaxTokens,
+        oninput: e => { E.bmaxTokens = e.target.value; previewBenchSpec(); } })),
+    f("Licence (recorded, never guessed)",
+      el("input", { type: "text", value: E.blicence, placeholder: "in-house, not redistributed",
+        oninput: e => { E.blicence = e.target.value; previewBenchSpec(); } })),
+    f("Sampling seed",
+      el("input", { type: "number", value: E.bseed,
+        oninput: e => { E.bseed = e.target.value; previewBenchSpec(); } })),
+    el("p", { class: "note" }, "Chance level is written from the options you declare: 25% on " +
+      "four options is not \u201c25% good\u201d, so the report prints accuracy above guessing " +
+      "beside the raw number."));
+  const right = el("div", {},
+    el("label", {}, "Spec preview"),
+    E.byamlErr ? errMsg(E.byamlErr) : null,
+    E.byaml ? codeBox(E.byaml, (E.bid || "benchmark") + ".yaml")
+            : el("p", { class: "note" }, "Type an id to see the spec."));
+  form.append(el("div", { class: "grid2 evform" }, left, right));
+  form.append(el("div", { class: "row", style: "margin-top:14px" },
+    el("button", { class: "btn", disabled: !E.byaml || !!E.byamlErr, onclick: createBenchmark },
+      "Create the benchmark and sample rows on disk"),
+    el("label", { class: "chk" },
+      el("input", { type: "checkbox", checked: E.overwrite,
+        onchange: e => { E.overwrite = e.target.checked; } }), "overwrite if the files exist")));
+  if (E.bcreateErr) form.append(errMsg(E.bcreateErr));
+  if (E.bcreated) form.append(el("div", { class: "msg ok" },
+    "Written: " + E.bcreated.written.join(", ") +
+    ". It is a benchmark now: it appears in the catalogue and in bench list."));
+  out.push(form);
+
+  // --- upload -------------------------------------------------------------
+  const up = card("5. Use your own rows (optional)",
+    "Upload a JSONL in the format above. Every line is checked before anything is " +
+    "written, and a problem names the line, so one pass fixes the file.");
+  up.append(el("div", { class: "row" },
+    el("label", { class: "btn ghost sm" }, "Choose items.jsonl",
+      el("input", { type: "file", accept: ".jsonl,.json,.txt", style: "display:none",
+        onchange: e => uploadBenchmarkRows(e.target.files[0]) }))));
+  if (E.buploadErr) up.append(errMsg(E.buploadErr));
+  if (E.bupload && E.bupload.problems) up.append(el("div", { class: "msg crit" },
+    el("div", {}, "Nothing was written. Problems found:"),
+    el("ul", { class: "cs-ul" }, E.bupload.problems.slice(0, 20).map(p => el("li", {}, p)))));
+  else if (E.bupload) up.append(el("div", { class: "msg ok" },
+    `Wrote ${E.bupload.path}: ${E.bupload.rows} rows.` +
+    (Object.keys(E.bupload.languages || {}).length
+      ? " Languages: " + Object.entries(E.bupload.languages).map(([k, v]) => `${k} ${v}`).join(", ") : "")));
+  out.push(up);
+
+  // --- run ----------------------------------------------------------------
+  const id = E.bid || "<benchmark id>";
+  const run = card("6. Run it, read it, freeze it",
+    "From here it is the same machinery as every shipped benchmark: same trace store, " +
+    "same cost meter, same paired test.");
+  [["Reference \u203a Catalogue", "Your set now appears here with its licence, family, chance level and extraction chain.", "catalogue"],
+   ["Run \u203a Benchmark run", "Pick the models, an item limit and a seed. Nothing is fetched: the rows are already yours.", "run"],
+   ["Analyse \u203a Benchmark results", "Accuracy with n beside it, accuracy above guessing, extraction failures and format violations kept apart, the paired test.", "results"],
+   ["Analyse \u203a Saved reports", "Freeze the result with its caveats.", "reports"],
+  ].forEach(([where, body, view], i) => run.append(step(i + 1, where, body,
+    el("button", { class: "btn ghost sm", onclick: () => go(view) }, "Go there"))));
+  run.append(el("h3", { class: "cs-h" }, "The same path from a terminal"), codeBox([
+    `python main.py bench validate --benchmark ${id}`,
+    `python main.py bench run --benchmark ${id} --models <model-a> <model-b> --limit 50 --seed ${E.bseed || 1729} --budget 2`,
+    `python main.py bench report --run-id <run id printed above>`,
+  ].join("\n")));
+  out.push(run);
+  return out;
+}
+
+function benchOptions() {
+  const E = S.ev;
+  return { labels: E.blabels, options_per_item: E.bopts, max_tokens: E.bmaxTokens,
+           licence: E.blicence, seed: E.bseed };
+}
+
+const _benchPreviewTimer = { id: null };
+function previewBenchSpec() {
+  clearTimeout(_benchPreviewTimer.id);
+  _benchPreviewTimer.id = setTimeout(async () => {
+    const E = S.ev;
+    if (!E.bid) { E.byaml = ""; E.byamlErr = ""; render(); return; }
+    try {
+      const r = await post("/api/bench-scaffold-preview",
+                           { id: E.bid, shape: E.bshape, options: benchOptions() });
+      E.byaml = r.yaml;
+      E.byamlErr = (r.errors || []).join("\n");
+    } catch (e) { E.byaml = ""; E.byamlErr = e.message; }
+    render();
+  }, 250);
+}
+
+async function loadBenchSpec() {
+  const E = S.ev;
+  try {
+    E.bspec = await api("/api/bench-scaffold-spec?shape=" + encodeURIComponent(E.bshape));
+    const d = E.bspec.defaults || {};
+    E.bmaxTokens = String(d.max_tokens || 1024);
+    if (d.options_per_item) E.bopts = d.options_per_item;
+    if (E.bshape === "classify" && !E.blabels) E.blabels = (d.labels || []).join(", ");
+  } catch (e) { E.bspec = null; E.bcreateErr = e.message; }
+  render();
+  previewBenchSpec();
+}
+
+async function createBenchmark() {
+  const E = S.ev;
+  E.bcreateErr = ""; E.bcreated = null;
+  try {
+    E.bcreated = await post("/api/bench-scaffold", {
+      id: E.bid, shape: E.bshape, options: benchOptions(),
+      with_samples: true, overwrite: E.overwrite });
+    S.benchmarks = (await api("/api/benchmarks")).benchmarks;
+  } catch (e) { E.bcreateErr = e.message; }
+  render();
+}
+
+function uploadBenchmarkRows(file) {
+  const E = S.ev;
+  if (!file) return;
+  if (!E.bid) { E.buploadErr = "Give the benchmark an id in step 4 first."; render(); return; }
+  const reader = new FileReader();
+  reader.onload = async () => {
+    E.buploadErr = "";
+    try {
+      E.bupload = await post("/api/upload-benchmark", {
+        id: E.bid, shape: E.bshape, text: String(reader.result),
+        labels: E.bshape === "classify" ? E.blabels : "", overwrite: E.overwrite });
+    } catch (e) {
+      const msg = e.message || "";
+      E.bupload = msg.toLowerCase().includes("problems")
+        ? { problems: msg.split("\n").slice(1).filter(Boolean) } : null;
+      E.buploadErr = E.bupload ? "" : msg;
+    }
+    render();
+  };
+  reader.readAsText(file);
 }
 
 const _previewTimer = { id: null };
@@ -2888,6 +3097,7 @@ function evOptions() {
 async function loadEvalSpec() {
   const E = S.ev;
   if (E.task === "benchmark") { render(); return; }
+  if (E.task === "own_benchmark") { loadBenchSpec(); return; }
   try {
     E.spec = await api("/api/scaffold-spec?task=" + encodeURIComponent(E.task));
     const d = E.spec.defaults;
@@ -2995,7 +3205,8 @@ function viewCapabilities() {
     ["Your own data (classify, generate, answer from documents)", "Built", "A profile is YAML: task, scorer, metrics, weights, apparatus. The Evaluate screen writes it from a few choices, shows the data format with sample rows, and checks an uploaded file line by line."],
     ["Retrieval apparatus", "Built", "A pinned embedder served locally (English or multilingual), dense, sparse or hybrid retrieval, an embedded vector index, citation checks and abstention scoring. The apparatus is identical for every model and its hash travels with every row."],
     ["Adversarial probes", "Built", "Unanswerable, noise, injection, paraphrase and positional items derived from your own set, with canaries stored hashed so a leak is detectable and never re-injected."],
-    ["Public benchmarks", "Built", "Eleven specs with pinned checksums and licence flags across multiple choice, maths, instruction following and multilingual maths (Bengali, Telugu), each with an offline fixture and the shared adapter contract suite. Chance-adjusted accuracy sits beside the raw one."],
+    ["Public benchmarks", "Built", "Fourteen specs with pinned checksums and licence flags across multiple choice, maths, instruction following and multilingual maths (Bengali, Telugu), each with an offline fixture and the shared adapter contract suite. Chance-adjusted accuracy sits beside the raw one."],
+    ["Your own benchmark, without code", "Built", "A private set of the four ordinary shapes becomes a benchmark from the browser: a YAML spec and your rows, no adapter module and no registry entry. It runs through the same trace store, cost meter and paired test, and the generic reader refuses a shape it cannot judge rather than guessing it."],
     ["Code benchmarks in a sandbox", "Roadmap", "HumanEval-style sets need a process sandbox with no network and hard limits; specified, not shipped, so no code benchmark is offered."],
   ])));
   w.append(card("Languages and context", "Built for Indian-language work, honest about coverage.", storyList([

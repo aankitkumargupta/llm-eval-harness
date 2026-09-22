@@ -51,7 +51,7 @@ def cmd_bench_list(args) -> int:
             "commercial": "yes" if spec.source.commercial_use else "ACK REQUIRED",
             "chance": spec.scoring.chance_level,
             "mode": spec.scoring.mode,
-            "adapter": "yes" if spec.id in registry.known() else "MISSING",
+            "adapter": "yes" if registry.has_adapter(spec) else "MISSING",
             "spec_hash": spec.spec_hash()[:12],
         })
     if args.family:
@@ -79,7 +79,7 @@ def cmd_bench_validate(args) -> int:
             continue
 
         notes = []
-        if spec.id not in registry.known():
+        if not registry.has_adapter(spec):
             ok = False
             notes.append("no adapter registered")
         if spec.requires_licence_ack() and not args.acknowledge_licence:

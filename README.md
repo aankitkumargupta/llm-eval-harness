@@ -36,6 +36,7 @@ It runs against **any provider**: Together, OpenAI, Anthropic, Groq, Fireworks, 
 - [Cost control](#cost-control)
 - [Non-RAG workloads](#non-rag-workloads)
 - [Preparing your own dataset](#preparing-your-own-dataset)
+- [Your own benchmark](#your-own-benchmark)
 - [Data format](#data-format)
 - [Configuration](#configuration)
 - [Understanding the results](#understanding-the-results)
@@ -439,7 +440,7 @@ The charts follow automatically; `harness/ui/theme.py` reads the configured base
 
 ### 7. Run on your own data
 
-**Start in the browser.** The Evaluate screen (second button in the task bar) walks a new user through it: pick the kind of task (label, generate, answer from documents, or a public benchmark), see the data format with sample rows you can copy or download, have the profile written from a few choices and validated as you type, upload your own JSONL (checked line by line before anything is written), then follow the numbered screens: Preflight, Retrieval and Probes for RAG, Profile run, Profile report, Decide, Saved reports. The same commands are printed beside each step.
+**Start in the browser.** The Evaluate screen (second button in the task bar) walks a new user through it: pick the kind of task (label, generate, answer from documents, [your own benchmark](#your-own-benchmark), or a public benchmark), see the data format with sample rows you can copy or download, have the profile written from a few choices and validated as you type, upload your own JSONL (checked line by line before anything is written), then follow the numbered screens: Preflight, Retrieval and Probes for RAG, Profile run, Profile report, Decide, Saved reports. The same commands are printed beside each step.
 
 **Or from the terminal.** Turn PDFs and a Q&A spreadsheet into the JSONL the harness reads, with gold passages auto-labeled:
 
@@ -789,6 +790,68 @@ Two things to get right:
 
 ---
 
+## Your own benchmark
+
+A public benchmark tells you how a model does on someone else's questions. Your own set is the
+only one guaranteed uncontaminated, and it is the one that matches the work. Declaring one takes
+a spec file and your rows. **No Python, no adapter module, no registry entry.**
+
+**Start in the browser.** Evaluate, then "Bring your own benchmark". Six steps: pick the shape of
+your rows, read the format with sample rows you can copy or download, name it and watch the spec
+validate as you type, create it, upload your own file, then run it. The same commands are printed
+beside each step.
+
+Four shapes are read directly:
+
+| Shape | Your rows carry | Scored by |
+|---|---|---|
+| Multiple choice | `question`, `options`, `answer` | The option letter, with chance-adjusted accuracy beside the raw number |
+| Short answer | `question`, `answer` | Exact match after case and punctuation are normalised; numbers compared as numbers |
+| Number | `question`, `answer` | Numeric equivalence, so `1,000` and `1000` and `1000.0` are one answer |
+| Label | `question`, `answer` plus a declared `label_set` | Exact match against your labels; a reply outside the set is a format failure, not a wrong label |
+
+The answer may be written however your file already has it. For multiple choice that means the
+option letter, the option number counting from one, or the option text itself; all three resolve
+to the same option, and a row whose answer names no option is refused when the file loads rather
+than scored zero for every model.
+
+What the screen writes is two files and nothing else:
+
+```
+configs/benchmarks/<id>.yaml        the spec, every line commented
+data/benchmarks/<id>/items.jsonl    your rows
+```
+
+The spec carries `adapter: custom`, which points at the generic adapter in
+`harness/bench/adapters/custom.py`. From there it is an ordinary benchmark: it appears in the
+catalogue and in `bench list`, and it shares the trace store, the cost meter, the cache, the
+paired significance test and the gate with every shipped set.
+
+```bash
+python main.py bench validate --benchmark my_set
+python main.py bench run --benchmark my_set --models <model-a> <model-b> --limit 50 --seed 1729
+python main.py bench report --run-id <the id printed above>
+```
+
+Three things it does deliberately, because each one is a common way a benchmark number becomes
+a lie:
+
+- **Chance level is written from the options you declare.** 25% on four options is not "25% good",
+  so the report prints accuracy above guessing beside the raw number.
+- **A row the extractor cannot read is not a wrong answer.** It scores as not applicable and is
+  counted in the extraction-failure rate, never in the accuracy numerator.
+- **The data's own mistakes are loud.** A duplicate id, a missing answer, a gold label outside the
+  declared set, or an answer that names no option stops the load with the line number, rather than
+  dropping the row and quietly changing the item set behind your back.
+
+**When you still need Python.** The generic adapter reads those four shapes and refuses anything
+else rather than guessing. A benchmark that executes code, retrieves passages, holds a
+conversation or checks programmatic constraints needs its own adapter in
+`harness/bench/adapters/`, a line in `harness/bench/registry.py` and a committed fixture. The
+existing adapters are the template, and the shared contract suite covers both kinds equally.
+
+---
+
 ## Data format
 
 Both files are **JSONL** (one JSON object per line, UTF-8).
@@ -887,6 +950,8 @@ llm-eval-harness/
 │   ├── store/              # TraceRow schema + append-only Parquet/DuckDB store
 │   ├── report/             # aggregate, stats, decide, gate, html
 │   ├── web/                # the browser UI: stdlib server, sign-in gate, static app
+│   ├── bench/              # benchmark subsystem: specs, adapters (incl. the
+│   │                       # generic one), extraction, fetch, runner, CLI
 │   ├── ui/                 # design system + app shell: palette, Altair theme,
 │   │   └── screens/        # charts, layout, page registry, one file per screen
 │   └── cache/              # content-addressed cache (+ a real null cache)
